@@ -3,22 +3,42 @@ using System;
 namespace GwentInterpreters
 {
     /// <summary>
-    /// Interface for the Visitor pattern.
-    /// </summary>
-    public interface IVisitor<T>
-    {
-        T VisitBinaryExpression(BinaryExpression expr);
-        T VisitUnaryExpression(UnaryExpression expr);
-        T VisitLiteralExpression(LiteralExpression expr);
-        T VisitGroupingExpression(GroupingExpression expr);
-    }
-
-    /// <summary>
     /// Base class for all types of expressions.
     /// </summary>
     public abstract class Expression
     {
+        /// <summary>
+        /// Interface for the Visitor pattern.
+        /// </summary>
+        public interface IVisitor<T>
+        {
+            T VisitBinaryExpression(BinaryExpression expr);
+            T VisitUnaryExpression(UnaryExpression expr);
+            T VisitLiteralExpression(LiteralExpression expr);
+            T VisitGroupingExpression(GroupingExpression expr);
+            T VisitVariableExpr(Variable expr);
+            T VisitAssignExpression(AssignExpression expr);
+            T VisitLogicalExpression(LogicalExpression expr); // Método añadido para LogicalExpression
+        }
+
         public abstract T Accept<T>(IVisitor<T> visitor);
+    }
+
+    public class AssignExpression : Expression
+    {
+        public Token Name { get; }
+        public Expression Value { get; }
+
+        public AssignExpression(Token name, Expression value)
+        {
+            Name = name;
+            Value = value;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitAssignExpression(this);
+        }
     }
 
     /// <summary>
@@ -96,6 +116,42 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitGroupingExpression(this);
+        }
+    }
+
+    public class Variable : Expression
+    {
+        public readonly Token name;
+        public Variable(Token name)
+        {
+            this.name = name;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitVariableExpr(this);
+        }
+    }
+
+    /// <summary>
+    /// Represents a logical expression composed of a left expression, an operator token, and a right expression.
+    /// </summary>
+    public class LogicalExpression : Expression
+    {
+        public Expression Left { get; }
+        public Token Operator { get; }
+        public Expression Right { get; }
+
+        public LogicalExpression(Expression left, Token op, Expression right)
+        {
+            Left = left;
+            Operator = op;
+            Right = right;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitLogicalExpression(this);
         }
     }
 }

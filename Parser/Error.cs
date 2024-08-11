@@ -7,7 +7,6 @@ namespace GwentInterpreters
     /// </summary>
     public class Error : Exception
     {
-        public string Message { get; private set; }         // El mensaje de error
         public ErrorType ErrorType { get; private set; }    // El tipo de error
 
         /// <summary>
@@ -18,16 +17,16 @@ namespace GwentInterpreters
         public Error(ErrorType errorType, string message) : base(message)
         {
             ErrorType = errorType;
-            Message = message;
+        
         }
 
         /// <summary>
         /// Retorna una representación en cadena del error.
         /// </summary>
         /// <returns>Una cadena que describe el tipo y mensaje de error.</returns>
-        public string Report()
+        public override string ToString()
         {
-            return $"! {ErrorType} ERROR: {Message}";
+            return $"! {ErrorType} ERROR: {base.Message}";
         }
     }
 

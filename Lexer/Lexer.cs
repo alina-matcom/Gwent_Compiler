@@ -10,52 +10,55 @@ namespace GwentInterpreters
         private int start = 0;
         private int current = 0;
         private int line = 1;
+        public static bool HadError { get; private set; } = false; // Variable para manejar errores
         private static readonly Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>()
-{
-    { "effect", TokenType.EFFECT },
-    { "card", TokenType.CARD },
-    { "name", TokenType.NAME },
-    { "type", TokenType.TYPE },
-    { "faction", TokenType.FACTION },
-    { "power", TokenType.POWER },
-    { "range", TokenType.RANGE },
-    { "action", TokenType.ACTION },
-    { "params", TokenType.PARAMS },
-
-    { "onActivation", TokenType.ONACTIVATION },
-    { "selector", TokenType.SELECTOR },
-    { "predicate", TokenType.PREDICATE },
-    { "postAction", TokenType.POSTACTION },
-
-    { "const", TokenType.CONST },
-    { "var", TokenType.VAR },
-    { "temp", TokenType.TEMP },
-
-    { "for", TokenType.FOR },
-    { "while", TokenType.WHILE },
-    { "if", TokenType.IF },
-    { "else", TokenType.ELSE },
-
-    { "triggerPlayer", TokenType.TRIGGERPLAYER },
-    { "board", TokenType.BOARD },
-    { "handOfPlayer", TokenType.HANDOFPLAYER },
-    { "fieldOfPlayer", TokenType.FIELD_OF_PLAYER },
-    { "graveyardOfPlayer", TokenType.GRAVEYARD_OF_PLAYER },
-    { "deckOfPlayer", TokenType.DECK_OF_PLAYER },
-    { "owner", TokenType.OWNER },
-    { "find", TokenType.FIND },
-    { "push", TokenType.PUSH },
-    { "sendBottom", TokenType.SENDBOTTOM },
-    { "pop", TokenType.POP },
-    { "remove", TokenType.REMOVE },
-    { "shuffle", TokenType.SHUFFLE },
-
-    // Operadores lógicos
-    { "and", TokenType.AND },
-    { "or", TokenType.OR },
-    { "not", TokenType.NOT },
-};
-
+        {
+            { "effect", TokenType.EFFECT },
+            { "card", TokenType.CARD },
+            { "Name", TokenType.NAME },
+            { "Type", TokenType.TYPE },
+            { "Faction", TokenType.FACTION },
+            { "Power", TokenType.POWER },
+            { "Range", TokenType.RANGE },
+            { "OnActivation", TokenType.ONACTIVATION },
+            { "Params", TokenType.PARAMS },
+            { "Action", TokenType.ACTION },
+            { "Amount", TokenType.AMOUNT },
+            { "Selector", TokenType.SELECTOR },
+            { "Source", TokenType.SOURCE },
+            { "Single", TokenType.SINGLE },
+            { "Predicate", TokenType.PREDICATE },
+            { "PostAction", TokenType.POSTACTION },
+            { "Number", TokenType.NUMBER_SPECIFIER },
+            { "Boolean", TokenType.BOOLEAN },
+            { "String", TokenType.STRING_SPECIFIER },
+            { "const", TokenType.CONST },
+            { "var", TokenType.VAR },
+            { "temp", TokenType.TEMP },
+            { "for", TokenType.FOR },
+            { "in", TokenType.IN },
+            { "while", TokenType.WHILE },
+            { "true", TokenType.TRUE },
+            { "false", TokenType.FALSE },
+            { "if", TokenType.IF },
+            { "else", TokenType.ELSE },
+            { "triggerPlayer", TokenType.TRIGGERPLAYER },
+            { "board", TokenType.BOARD },
+            { "handOfPlayer", TokenType.HANDOFPLAYER },
+            { "fieldOfPlayer", TokenType.FIELD_OF_PLAYER },
+            { "graveyardOfPlayer", TokenType.GRAVEYARD_OF_PLAYER },
+            { "deckOfPlayer", TokenType.DECK_OF_PLAYER },
+            { "owner", TokenType.OWNER },
+            { "find", TokenType.FIND },
+            { "push", TokenType.PUSH },
+            { "sendBottom", TokenType.SENDBOTTOM },
+            { "pop", TokenType.POP },
+            { "remove", TokenType.REMOVE },
+            { "shuffle", TokenType.SHUFFLE },
+            { "and", TokenType.AND },
+            { "or", TokenType.OR },
+            { "not", TokenType.NOT }
+        };
 
         public Scanner(string source)
         {
@@ -92,6 +95,12 @@ namespace GwentInterpreters
                 case '}':
                     AddToken(TokenType.RIGHT_BRACE);
                     break;
+                case '[':  // Manejar el carácter '['
+                    AddToken(TokenType.LEFT_BRACKET);
+                    break;
+                case ']':  // Manejar el carácter ']'
+                    AddToken(TokenType.RIGHT_BRACKET);
+                    break;
                 case ',':
                     AddToken(TokenType.COMMA);
                     break;
@@ -99,10 +108,32 @@ namespace GwentInterpreters
                     AddToken(TokenType.DOT);
                     break;
                 case '-':
-                    AddToken(TokenType.MINUS);
+                    if (Match('='))
+                    {
+                        AddToken(TokenType.MINUS_EQUAL);
+                    }
+                    else if (Match('-'))
+                    {
+                        AddToken(TokenType.DECREMENT);
+                    }
+                    else
+                    {
+                        AddToken(TokenType.MINUS);
+                    }
                     break;
                 case '+':
-                    AddToken(TokenType.PLUS);
+                    if (Match('='))
+                    {
+                        AddToken(TokenType.PLUS_EQUAL);
+                    }
+                    else if (Match('+'))
+                    {
+                        AddToken(TokenType.INCREMENT);
+                    }
+                    else
+                    {
+                        AddToken(TokenType.PLUS);
+                    }
                     break;
                 case ';':
                     AddToken(TokenType.SEMICOLON);
@@ -113,17 +144,42 @@ namespace GwentInterpreters
                 case '/':
                     AddToken(TokenType.SLASH);
                     break;
+                case ':':
+                    AddToken(TokenType.COLON);
+                    break;
                 case '!':
                     AddToken(Match('=') ? TokenType.NOT_EQUAL : TokenType.NOT);
                     break;
                 case '=':
-                    AddToken(Match('=') ? TokenType.EQUAL_EQUAL : TokenType.ASSIGN);
+                    if (Match('='))
+                    {
+                        AddToken(TokenType.EQUAL_EQUAL);
+                    }
+                    else if (Match('>'))
+                    {
+                        AddToken(TokenType.LAMBDA);
+                    }
+                    else
+                    {
+                        AddToken(TokenType.ASSIGN);
+                    }
                     break;
                 case '<':
                     AddToken(Match('=') ? TokenType.LESS_EQUAL : TokenType.LESS);
                     break;
                 case '>':
                     AddToken(Match('=') ? TokenType.GREATER_EQUAL : TokenType.GREATER);
+                    break;
+
+                case '@':
+                    if (Match('@'))
+                    {
+                        AddToken(TokenType.DOUBLE_CONCAT);
+                    }
+                    else
+                    {
+                        AddToken(TokenType.CONCAT);
+                    }
                     break;
                 case ' ':
                 case '\r':
@@ -147,7 +203,7 @@ namespace GwentInterpreters
                     }
                     else
                     {
-                        throw new Error(ErrorType.LEXICAL, $"Character '{c}' is not supported.");
+                        Error(line, $"Carácter inesperado: {c}");
                     }
                     break;
             }
@@ -158,8 +214,20 @@ namespace GwentInterpreters
             while (IsAlphaNumeric(Peek())) Advance();
             string text = source.Substring(start, current - start);
             TokenType type = keywords.ContainsKey(text) ? keywords[text] : TokenType.IDENTIFIER;
-            AddToken(type);
+            object literal = null;
 
+            // Asigna el valor booleano si la palabra clave es "false"
+            if (text == "false")
+            {
+                literal = false;
+            }
+            // Puedes agregar lógica similar para otras palabras clave booleanas como "true"
+            else if (text == "true")
+            {
+                literal = true;
+            }
+
+            AddToken(type, literal);
         }
 
         private bool IsAlpha(char c)
@@ -171,25 +239,39 @@ namespace GwentInterpreters
         {
             return IsAlpha(c) || IsDigit(c);
         }
-        private void Number()
+      private void Number()
+{
+    bool hasDecimal = false;
+
+    while (IsDigit(Peek()) || (Peek() == '.' && !hasDecimal && IsDigit(PeekNext())))
+    {
+        if (Peek() == '.')
         {
-            while (IsDigit(Peek())) Advance();
+            hasDecimal = true;
+        }
+        Advance();
+    }
 
-            // Buscamos la parte fraccional.
-            if (Peek() == '.' && IsDigit(PeekNext()))
-            {
-                // Consumimos el "."
-                Advance();
-                while (IsDigit(Peek())) Advance();
-            }
-
-            // Convertimos el lexema a double.
-            string numberStr = source.Substring(start, current - start);
-            double number = double.Parse(numberStr);
-            AddToken(TokenType.NUMBER, number);
+    // Si encontramos un segundo punto decimal o terminamos en un punto sin un número después
+    if (Peek() == '.' || (hasDecimal && !IsDigit(PeekNext())))
+    {
+        // Consumir el resto de la secuencia hasta que se encuentre un delimitador
+        while (IsDigit(Peek()) || Peek() == '.')
+        {
+            Advance();
         }
 
-        private bool IsDigit(char c)
+        string invalidNumber = source.Substring(start, current - start);
+        Error(line, $"Número mal formado: {invalidNumber}");
+    }
+    else
+    {
+        // Convertimos el lexema a double.
+        string numberStr = source.Substring(start, current - start);
+        double number = double.Parse(numberStr);
+        AddToken(TokenType.NUMBER, number);
+    }
+}        private bool IsDigit(char c)
         {
             return c >= '0' && c <= '9';
         }
@@ -260,9 +342,13 @@ namespace GwentInterpreters
 
         private void Error(int line, string message)
         {
-            // Aquí puedes implementar la lógica para manejar errores.
-            // Por ejemplo, podrías imprimir el error o añadirlo a una lista de errores.
-            Console.WriteLine($"[Line {line}] Error: {message}");
+            Report(line, "", message);
+            HadError = true; // Marcamos que hubo un error
+        }
+
+        private void Report(int line, string where, string message)
+        {
+            Console.Error.WriteLine($"[line {line}] Error{where}: {message}");
         }
     }
 }

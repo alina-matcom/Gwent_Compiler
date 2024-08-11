@@ -1,0 +1,15 @@
+C:\Users\Alina\Desktop\Proyecto Gwent++\bin\Debug\net8.0\Proyecto Gwent++.exe
+C:\Users\Alina\Desktop\Proyecto Gwent++\bin\Debug\net8.0\Proyecto Gwent++.deps.json
+C:\Users\Alina\Desktop\Proyecto Gwent++\bin\Debug\net8.0\Proyecto Gwent++.runtimeconfig.json
+C:\Users\Alina\Desktop\Proyecto Gwent++\bin\Debug\net8.0\Proyecto Gwent++.dll
+C:\Users\Alina\Desktop\Proyecto Gwent++\bin\Debug\net8.0\Proyecto Gwent++.pdb
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.AssemblyInfoInputs.cache
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.AssemblyInfo.cs
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.csproj.CoreCompileInputs.cache
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.sourcelink.json
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.dll
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\refint\Proyecto Gwent++.dll
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.pdb
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\Proyecto Gwent++.genruntimeconfig.cache
+C:\Users\Alina\Desktop\Proyecto Gwent++\obj\Debug\net8.0\ref\Proyecto Gwent++.dll

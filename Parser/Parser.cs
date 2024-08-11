@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq.Expressions;
 
 namespace GwentInterpreters
 {
@@ -13,24 +14,298 @@ namespace GwentInterpreters
             this.tokens = tokens;
         }
 
-        public Expression Parse()
+
+        public List<Stmt> Parse()
+        {
+            List<Stmt> statements = new List<Stmt>();
+            while (!IsAtEnd())
+            {
+                statements.Add(Declaration());
+            }
+            return statements;
+        }
+
+        private Stmt Declaration()
         {
             try
             {
-                return Expression();
+                if (Match(TokenType.EFFECT)) return EffectDeclaration();
+                if (Match(TokenType.CARD)) return CardDeclaration();
+                // Puedes manejar otros tipos de declaraciones si es necesario.
+
+                throw Error(Peek(), "Expected 'effect' or 'card' declaration.");
             }
             catch (ParseError error)
             {
+                Synchronize();
                 return null;
             }
+        }
+        private Stmt EffectDeclaration()
+        {
+            // El token 'EFFECT' ya fue consumido en el método 'Declaration'
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'effect'.");
+
+            string name = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre para el efecto.").Lexeme;
+
+            Dictionary<string, Type> parameters = new Dictionary<string, Type>();
+
+            if (Match(TokenType.PARAMS))
+            {
+                Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'Params'.");
+                while (!Check(TokenType.RIGHT_BRACE))
+                {
+                    string paramName = Consume(TokenType.IDENTIFIER, "Se esperaba el nombre de un parámetro.").Lexeme;
+                    Consume(TokenType.COLON, "Se esperaba ':' después del nombre del parámetro.");
+                    Type paramType = ParseType();
+                    parameters[paramName] = paramType;
+
+                    if (!Match(TokenType.COMMA))
+                    {
+                        break;
+                    }
+                }
+                Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración de parámetros.");
+            }
+
+            Consume(TokenType.ACTION, "Se esperaba la palabra clave 'Action'.");
+            ActionStmt action = ParseAction();
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración del efecto.");
+
+            return new EffectStmt(name, parameters, action);
+        }
+        private ActionStmt ParseAction()
+        {
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' para el bloque de acción.");
+            Expression targets = Expression(); // Asumimos que tienes una forma de parsear 'targets'
+            List<Stmt> body = Block(); // Reutilizamos el método Block para el cuerpo de la acción
+            return new ActionStmt(targets, body);
+        }
+        private Type ParseType()
+        {
+            if (Match(TokenType.NUMBER)) return typeof(int);
+            if (Match(TokenType.STRING)) return typeof(string);
+            if (Match(TokenType.BOOLEAN)) return typeof(bool);
+            throw Error(Peek(), "Tipo no válido.");
+        }
+
+        private Stmt CardDeclaration()
+        {
+            Consume(TokenType.CARD, "Se esperaba la palabra clave 'card'.");
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'card'.");
+
+            // Parsear propiedades de la carta
+            string type = ParseStringProperty("Type");
+            string name = ParseStringProperty("Name");
+            string faction = ParseStringProperty("Faction");
+            int power = ParseIntProperty("Power");
+            List<string> range = ParseRange();
+
+            // Parsear OnActivation
+            List<OnActivationStmt> onActivation = new List<OnActivationStmt>();
+            if (Match(TokenType.ONACTIVATION))
+            {
+                Consume(TokenType.COLON, "Se esperaba ':' después de 'OnActivation'.");
+                Consume(TokenType.LEFT_BRACKET, "Se esperaba '[' después de 'OnActivation:'.");
+
+                while (!Check(TokenType.RIGHT_BRACKET))
+                {
+                    onActivation.Add(ParseOnActivation());
+                    if (!Match(TokenType.COMMA))
+                    {
+                        break;
+                    }
+                }
+
+                Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' después de la lista de 'OnActivation'.");
+            }
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración de la carta.");
+
+            return new CardStmt(type, name, faction, power, range, onActivation);
+        }
+
+        private string ParseStringProperty(string propertyName)
+        {
+            Consume(TokenType.IDENTIFIER, $"Se esperaba '{propertyName}'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después del nombre de la propiedad.");
+            return Consume(TokenType.STRING, $"Se esperaba un valor para '{propertyName}'.").Lexeme;
+        }
+
+        private int ParseIntProperty(string propertyName)
+        {
+            Consume(TokenType.IDENTIFIER, $"Se esperaba '{propertyName}'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después del nombre de la propiedad.");
+            return int.Parse(Consume(TokenType.NUMBER, $"Se esperaba un valor para '{propertyName}'.").Lexeme);
+        }
+
+        private List<string> ParseRange()
+        {
+            Consume(TokenType.RANGE, "Se esperaba 'Range'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Range'.");
+            Consume(TokenType.LEFT_BRACKET, "Se esperaba '[' para la lista de rangos.");
+
+            List<string> range = new List<string>();
+            while (!Check(TokenType.RIGHT_BRACKET))
+            {
+                range.Add(Consume(TokenType.STRING, "Se esperaba un valor de rango.").Lexeme);
+                if (!Match(TokenType.COMMA))
+                {
+                    break;
+                }
+            }
+
+            Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' después de la lista de rangos.");
+            return range;
+        }
+
+        private OnActivationStmt ParseOnActivation()
+        {
+            // Parsear el efecto
+            EffectStmt effect = ParseEffect();
+
+            // Parsear el selector
+            SelectorStmt selector = ParseSelector();
+
+            // Parsear el postAction si está presente
+            PostActionStmt postAction = null;
+            if (Match(TokenType.POST_ACTION))
+            {
+                postAction = ParsePostAction();
+            }
+
+            return new OnActivationStmt(effect, selector, postAction);
+        }
+
+        private Stmt VarDeclaration()
+        {
+            Token name = Consume(TokenType.IDENTIFIER, "Expect variable name.");
+            Expression initializer = null;
+            if (Match(TokenType.ASSIGN))
+            {
+                initializer = Expression();
+            }
+            Consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
+            return new Var(name, initializer);
+        }
+        private List<Stmt> Block()
+        {
+            List<Stmt> statements = new List<Stmt>();
+
+            while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
+            {
+                statements.Add(Declaration());
+            }
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después del bloque.");
+            return statements;
+        }
+        private Stmt Statement()
+        {
+            if (Match(TokenType.LEFT_BRACE))
+                return new Block(Block());
+
+            if (Match(TokenType.IF))
+                return IfStatement();
+
+            if (Match(TokenType.WHILE))
+                return WhileStatement();
+
+            return ExpressionStatement();
+        }
+
+        // Método WhileStatement integrado
+        private Stmt WhileStatement()
+        {
+            Consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.");
+            Expression condition = Expression();
+            Consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.");
+            Stmt body = Statement();
+            return new While(condition, body);
+        }
+
+        private Stmt IfStatement()
+        {
+            Consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");
+            Expression condition = Expression();
+            Consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.");
+            Stmt thenBranch = Statement();
+            Stmt elseBranch = null;
+            if (Match(TokenType.ELSE))
+            {
+                elseBranch = Statement();
+            }
+            return new If(condition, thenBranch, elseBranch);
+        }
+
+        private Stmt ExpressionStatement()
+        {
+            Expression expr = Expression();
+            Consume(TokenType.SEMICOLON, "Expect ';' after expression.");
+            return new Expr(expr);
         }
 
         private class ParseError : Exception { }
 
         private Expression Expression()
         {
-            return Equality();
+            return Assignment();
         }
+
+        private Expression Assignment()
+        {
+            // Llamamos a Or() en lugar de Equality() para integrar la lógica adicional.
+            Expression expr = Or();
+
+            if (Match(TokenType.ASSIGN))
+            {
+                Token equals = Previous();
+                Expression value = Assignment();
+
+                if (expr is Variable variableExpr)
+                {
+                    Token name = variableExpr.name;
+                    return new AssignExpression(name, value);
+                }
+
+                // Error: Se esperaba un nombre de variable a la izquierda del '='
+                Error(equals, "Se esperaba un nombre de variable.");
+            }
+
+            return expr;
+        }
+
+        // Método Or() que maneja la lógica de los operadores lógicos 'or' y 'and'.
+        private Expression Or()
+        {
+            Expression expr = And();
+
+            while (Match(TokenType.OR))
+            {
+                Token operatorToken = Previous();
+                Expression right = And();
+                expr = new LogicalExpression(expr, operatorToken, right);
+            }
+
+            return expr;
+        }
+
+        // Método And() que maneja la lógica de los operadores lógicos 'and'.
+        private Expression And()
+        {
+            Expression expr = Equality();
+
+            while (Match(TokenType.AND))
+            {
+                Token operatorToken = Previous();
+                Expression right = Equality();
+                expr = new LogicalExpression(expr, operatorToken, right);
+            }
+
+            return expr;
+        }
+
 
         private Expression Equality()
         {
@@ -98,6 +373,11 @@ namespace GwentInterpreters
             if (Match(TokenType.BOOLEAN, TokenType.NUMBER, TokenType.STRING))
             {
                 return new LiteralExpression(Previous().Literal);
+            }
+
+            if (Match(TokenType.IDENTIFIER))
+            {
+                return new Variable(Previous());
             }
             if (Match(TokenType.LEFT_PAREN))
             {
@@ -182,7 +462,6 @@ namespace GwentInterpreters
 
                 switch (Peek().Type)
                 {
-                    case TokenType.VAR:
                     case TokenType.FOR:
                     case TokenType.IF:
                     case TokenType.WHILE:
