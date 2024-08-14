@@ -5,11 +5,10 @@ namespace GwentInterpreters
         public interface IVisitor
         {
             void VisitExprStmt(Expr stmt);
-            void VisitVarStmt(Var stmt);
             void VisitBlockStmt(Block stmt);
             void VisitIfStmt(If stmt);
-            void VisitWhileStmt(While stmt); // Añadido para la clase While
-
+            void VisitWhileStmt(While stmt);
+            void VisitForStmt(For stmt); // Añadido para la clase For
 
             void VisitEffectStmt(EffectStmt stmt);
             void VisitActionStmt(ActionStmt stmt);
@@ -34,23 +33,6 @@ namespace GwentInterpreters
         public override void Accept(IVisitor visitor)
         {
             visitor.VisitExprStmt(this);
-        }
-    }
-
-    public class Var : Stmt
-    {
-        public readonly Token name;
-        public readonly Expression initializer;
-
-        public Var(Token name, Expression initializer)
-        {
-            this.name = name;
-            this.initializer = initializer;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitVarStmt(this);
         }
     }
 
@@ -88,7 +70,6 @@ namespace GwentInterpreters
         }
     }
 
-    // Nueva clase While integrada
     public class While : Stmt
     {
         public Expression Condition { get; }
@@ -106,7 +87,24 @@ namespace GwentInterpreters
         }
     }
 
-    // Nuevas clases extendiendo Stmt
+    public class For : Stmt
+    {
+        public Token Iterator { get; }
+        public Expression Iterable { get; }
+        public List<Stmt> Body { get; }
+
+        public For(Token iterator, Expression iterable, List<Stmt> body)
+        {
+            Iterator = iterator;
+            Iterable = iterable;
+            Body = body;
+        }
+
+        public override void Accept(IVisitor visitor)
+        {
+            visitor.VisitForStmt(this);
+        }
+    }
 
     public class EffectStmt : Stmt
     {

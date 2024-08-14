@@ -178,29 +178,7 @@ namespace GwentInterpreters
             return new OnActivationStmt(effect, selector, postAction);
         }
 
-        private Stmt VarDeclaration()
-        {
-            Token name = Consume(TokenType.IDENTIFIER, "Expect variable name.");
-            Expression initializer = null;
-            if (Match(TokenType.ASSIGN))
-            {
-                initializer = Expression();
-            }
-            Consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.");
-            return new Var(name, initializer);
-        }
-        private List<Stmt> Block()
-        {
-            List<Stmt> statements = new List<Stmt>();
 
-            while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
-            {
-                statements.Add(Declaration());
-            }
-
-            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después del bloque.");
-            return statements;
-        }
         private Stmt Statement()
         {
             if (Match(TokenType.LEFT_BRACE))
@@ -214,7 +192,18 @@ namespace GwentInterpreters
 
             return ExpressionStatement();
         }
+        private List<Stmt> Block()
+        {
+            List<Stmt> statements = new List<Stmt>();
 
+            while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
+            {
+                statements.Add(Statement());
+            }
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después del bloque.");
+            return statements;
+        }
         // Método WhileStatement integrado
         private Stmt WhileStatement()
         {
@@ -225,6 +214,18 @@ namespace GwentInterpreters
             return new While(condition, body);
         }
 
+        private Stmt ForStatement()
+        {
+            Consume(TokenType.FOR, "Se esperaba 'for'.");
+            Token iterator = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre de variable para el iterador.");
+            Consume(TokenType.IN, "Se esperaba 'in' después del nombre del iterador.");
+            Expression iterable = Expression();
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de la expresión de iteración.");
+
+            List<Stmt> body = Block();
+
+            return new For(iterator, iterable, body);
+        }
         private Stmt IfStatement()
         {
             Consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");

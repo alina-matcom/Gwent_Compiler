@@ -66,15 +66,7 @@ namespace GwentInterpreters
             }
         }
 
-        public void VisitVarStmt(Var stmt)
-        {
-            object value = null;
-            if (stmt.initializer != null)
-            {
-                value = Evaluate(stmt.initializer);
-            }
-            environment.Define(stmt.name.Lexeme, value);
-        }
+
 
         public void VisitWhileStmt(While stmt)
         {
@@ -84,6 +76,31 @@ namespace GwentInterpreters
             }
         }
 
+        public void VisitForStmt(For stmt)
+        {
+            // Evalúa la expresión iterable y asegúrate de que es una colección.
+            object iterable = Evaluate(stmt.Iterable);
+
+            if (iterable is IEnumerable collection)
+            {
+                // Itera sobre la colección.
+                foreach (var item in collection)
+                {
+                    // Crea un nuevo entorno para esta iteración.
+                    var localEnvironment = new Environment(environment);
+
+                    // Define el 'target' solo en este entorno local.
+                    localEnvironment.Define(stmt.Iterator.Lexeme, item);
+
+                    // Ejecuta el cuerpo del bucle en el entorno local.
+                    ExecuteBlock(stmt.Body, localEnvironment);
+                }
+            }
+            else
+            {
+                throw new RuntimeError(stmt.Iterator, "La expresión no es iterable.");
+            }
+        }
         public object VisitVariableExpr(Variable expr)
         {
             return environment.Get(expr.name);
