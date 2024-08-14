@@ -30,7 +30,7 @@ namespace GwentInterpreters
             try
             {
                 if (Match(TokenType.EFFECT)) return EffectDeclaration();
-                if (Match(TokenType.CARD)) return CardDeclaration();
+                // if (Match(TokenType.CARD)) return CardDeclaration();
                 // Puedes manejar otros tipos de declaraciones si es necesario.
 
                 throw Error(Peek(), "Expected 'effect' or 'card' declaration.");
@@ -43,36 +43,36 @@ namespace GwentInterpreters
         }
         private Stmt EffectDeclaration()
         {
-            // El token 'EFFECT' ya fue consumido en el método 'Declaration'
+            // Consumimos 'effect'
+            Consume(TokenType.EFFECT, "Se esperaba la palabra clave 'effect'.");
+
+            // Consumimos la apertura del bloque '{'
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'effect'.");
 
-            string name = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre para el efecto.").Lexeme;
+            // Parseo del nombre del efecto
+            Consume(TokenType.NAME, "Se esperaba la clave 'Name' dentro del efecto.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Name'.");
+            string name = Consume(TokenType.STRING, "Se esperaba un nombre de efecto.").Lexeme;
 
-            Dictionary<string, Type> parameters = new Dictionary<string, Type>();
+            // Inicialización del diccionario de parámetros con tipos (opcional)
+            Dictionary<string, Type> parameters = null;
 
+            // Verificamos si 'Params' está presente
             if (Match(TokenType.PARAMS))
             {
-                Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'Params'.");
-                while (!Check(TokenType.RIGHT_BRACE))
-                {
-                    string paramName = Consume(TokenType.IDENTIFIER, "Se esperaba el nombre de un parámetro.").Lexeme;
-                    Consume(TokenType.COLON, "Se esperaba ':' después del nombre del parámetro.");
-                    Type paramType = ParseType();
-                    parameters[paramName] = paramType;
-
-                    if (!Match(TokenType.COMMA))
-                    {
-                        break;
-                    }
-                }
-                Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración de parámetros.");
+                Consume(TokenType.COLON, "Se esperaba ':' después de 'Params'.");
+                parameters = ParseParams();
             }
 
-            Consume(TokenType.ACTION, "Se esperaba la palabra clave 'Action'.");
+            // Parseo de la acción
+            Consume(TokenType.ACTION, "Se esperaba la clave 'Action' dentro del efecto.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Action'.");
             ActionStmt action = ParseAction();
 
-            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración del efecto.");
+            // Consumimos la clausura del bloque '}'
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de efecto.");
 
+            // Retornamos un nodo de declaración de efecto con todos los campos necesarios
             return new EffectStmt(name, parameters, action);
         }
         private ActionStmt ParseAction()
@@ -82,116 +82,53 @@ namespace GwentInterpreters
             List<Stmt> body = Block(); // Reutilizamos el método Block para el cuerpo de la acción
             return new ActionStmt(targets, body);
         }
-        private Type ParseType()
+
+        private Dictionary<string, Type> ParseParams()
         {
-            if (Match(TokenType.NUMBER)) return typeof(int);
-            if (Match(TokenType.STRING)) return typeof(string);
-            if (Match(TokenType.BOOLEAN)) return typeof(bool);
-            throw Error(Peek(), "Tipo no válido.");
-        }
+            var parameters = new Dictionary<string, Type>();
 
-        private Stmt CardDeclaration()
-        {
-            Consume(TokenType.CARD, "Se esperaba la palabra clave 'card'.");
-            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'card'.");
+            // Consumimos '{' que abre el bloque de parámetros
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'Params'.");
 
-            // Parsear propiedades de la carta
-            string type = ParseStringProperty("Type");
-            string name = ParseStringProperty("Name");
-            string faction = ParseStringProperty("Faction");
-            int power = ParseIntProperty("Power");
-            List<string> range = ParseRange();
-
-            // Parsear OnActivation
-            List<OnActivationStmt> onActivation = new List<OnActivationStmt>();
-            if (Match(TokenType.ONACTIVATION))
+            // Parseamos todos los pares clave-tipo dentro del bloque de parámetros
+            while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
             {
-                Consume(TokenType.COLON, "Se esperaba ':' después de 'OnActivation'.");
-                Consume(TokenType.LEFT_BRACKET, "Se esperaba '[' después de 'OnActivation:'.");
+                // Consumimos el nombre del parámetro
+                Token paramName = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre de parámetro.");
 
-                while (!Check(TokenType.RIGHT_BRACKET))
-                {
-                    onActivation.Add(ParseOnActivation());
-                    if (!Match(TokenType.COMMA))
-                    {
-                        break;
-                    }
-                }
+                // Consumimos ':'
+                Consume(TokenType.COLON, "Se esperaba ':' después del nombre del parámetro.");
 
-                Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' después de la lista de 'OnActivation'.");
-            }
+                // Parseamos el tipo del parámetro usando los especificadores
+                Type paramType = ParseType();
 
-            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de la declaración de la carta.");
+                // Guardamos el par clave-tipo en el diccionario
+                parameters[paramName.Lexeme] = paramType;
 
-            return new CardStmt(type, name, faction, power, range, onActivation);
-        }
-
-        private string ParseStringProperty(string propertyName)
-        {
-            Consume(TokenType.IDENTIFIER, $"Se esperaba '{propertyName}'.");
-            Consume(TokenType.COLON, "Se esperaba ':' después del nombre de la propiedad.");
-            return Consume(TokenType.STRING, $"Se esperaba un valor para '{propertyName}'.").Lexeme;
-        }
-
-        private int ParseIntProperty(string propertyName)
-        {
-            Consume(TokenType.IDENTIFIER, $"Se esperaba '{propertyName}'.");
-            Consume(TokenType.COLON, "Se esperaba ':' después del nombre de la propiedad.");
-            return int.Parse(Consume(TokenType.NUMBER, $"Se esperaba un valor para '{propertyName}'.").Lexeme);
-        }
-
-        private List<string> ParseRange()
-        {
-            Consume(TokenType.RANGE, "Se esperaba 'Range'.");
-            Consume(TokenType.COLON, "Se esperaba ':' después de 'Range'.");
-            Consume(TokenType.LEFT_BRACKET, "Se esperaba '[' para la lista de rangos.");
-
-            List<string> range = new List<string>();
-            while (!Check(TokenType.RIGHT_BRACKET))
-            {
-                range.Add(Consume(TokenType.STRING, "Se esperaba un valor de rango.").Lexeme);
+                // Si hay una coma, avanzamos para el siguiente parámetro
                 if (!Match(TokenType.COMMA))
                 {
                     break;
                 }
             }
 
-            Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' después de la lista de rangos.");
-            return range;
+            // Consumimos '}' que cierra el bloque de parámetros
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de los parámetros.");
+
+            return parameters;
         }
 
-        private OnActivationStmt ParseOnActivation()
+        private Type ParseType()
         {
-            // Parsear el efecto
-            EffectStmt effect = ParseEffect();
-
-            // Parsear el selector
-            SelectorStmt selector = ParseSelector();
-
-            // Parsear el postAction si está presente
-            PostActionStmt postAction = null;
-            if (Match(TokenType.POST_ACTION))
-            {
-                postAction = ParsePostAction();
-            }
-
-            return new OnActivationStmt(effect, selector, postAction);
+            if (Match(TokenType.NUMBER_SPECIFIER)) return typeof(int);
+            if (Match(TokenType.STRING_SPECIFIER)) return typeof(string);
+            if (Match(TokenType.BOOLEAN_SPECIFIER)) return typeof(bool);
+            throw Error(Peek(), "Tipo no válido.");
         }
 
 
-        private Stmt Statement()
-        {
-            if (Match(TokenType.LEFT_BRACE))
-                return new Block(Block());
 
-            if (Match(TokenType.IF))
-                return IfStatement();
 
-            if (Match(TokenType.WHILE))
-                return WhileStatement();
-
-            return ExpressionStatement();
-        }
         private List<Stmt> Block()
         {
             List<Stmt> statements = new List<Stmt>();
@@ -204,6 +141,24 @@ namespace GwentInterpreters
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después del bloque.");
             return statements;
         }
+        private Stmt Statement()
+        {
+            if (Match(TokenType.LEFT_BRACE))
+                return new Block(Block());
+
+            if (Match(TokenType.IF))
+                return IfStatement();
+
+            if (Match(TokenType.WHILE))
+                return WhileStatement();
+
+            if (Match(TokenType.FOR))
+                return ForStatement();
+
+
+            return ExpressionStatement();
+        }
+
         // Método WhileStatement integrado
         private Stmt WhileStatement()
         {
@@ -216,7 +171,6 @@ namespace GwentInterpreters
 
         private Stmt ForStatement()
         {
-            Consume(TokenType.FOR, "Se esperaba 'for'.");
             Token iterator = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre de variable para el iterador.");
             Consume(TokenType.IN, "Se esperaba 'in' después del nombre del iterador.");
             Expression iterable = Expression();
@@ -226,6 +180,7 @@ namespace GwentInterpreters
 
             return new For(iterator, iterable, body);
         }
+
         private Stmt IfStatement()
         {
             Consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.");

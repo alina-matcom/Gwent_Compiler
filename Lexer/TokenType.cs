@@ -32,6 +32,7 @@ namespace GwentInterpreters
         STRING,         // Representa un valor de cadena
         NUMBER,         // Representa un valor numérico
         BOOLEAN,        // Representa un valor booleano
+        BOOLEAN_SPECIFIER,
 
         // Símbolos y operadores
         LEFT_BRACE,     // Representa el símbolo "{" (llave izquierda)
