@@ -6,6 +6,8 @@ namespace GwentInterpreters
     {
         private bool hadRuntimeError = false;
         private Environment environment = new Environment();
+        // Diccionario para almacenar los efectos definidos
+        private Dictionary<string, EffectDefinition> effectDefinitions = new Dictionary<string, EffectDefinition>();
         public void Interpret(List<Stmt> statements)
         {
             try
@@ -24,6 +26,20 @@ namespace GwentInterpreters
         private void Execute(Stmt stmt)
         {
             stmt.Accept(this);
+        }
+
+        // Implementación de la visita al nodo EffectStmt
+        public void VisitEffectStmt(EffectStmt stmt)
+        {
+            // Creando una nueva definición de efecto y almacenando la acción
+            EffectDefinition effect = new EffectDefinition(stmt);
+
+            // Guardando la definición en el diccionario de efectos
+            if (effectDefinitions.ContainsKey(stmt.Name))
+            {
+                throw new RuntimeError(null, $"El efecto '{stmt.Name}' ya está definido.");
+            }
+            effectDefinitions[stmt.Name] = effect;
         }
 
 
@@ -68,22 +84,12 @@ namespace GwentInterpreters
             }
         }
 
-
-
-        public void VisitWhileStmt(While stmt)
-        {
-            while (IsTruthy(Evaluate(stmt.Condition)))
-            {
-                Execute(stmt.Body);
-            }
-        }
-
         public void VisitForStmt(For stmt)
         {
             // Evalúa la expresión iterable y asegúrate de que es una colección.
-            object iterable = Evaluate(stmt.Iterable);
+            object iterable = environment.Get(stmt.Iterable);
 
-            if (iterable is IEnumerable collection)
+            if (iterable is Iterable collection)
             {
                 // Itera sobre la colección.
                 foreach (var item in collection)
@@ -103,6 +109,16 @@ namespace GwentInterpreters
                 throw new RuntimeError(stmt.Iterator, "La expresión no es iterable.");
             }
         }
+
+
+        public void VisitWhileStmt(While stmt)
+        {
+            while (IsTruthy(Evaluate(stmt.Condition)))
+            {
+                Execute(stmt.Body);
+            }
+        }
+
         public object VisitVariableExpr(Variable expr)
         {
             return environment.Get(expr.name);

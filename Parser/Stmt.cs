@@ -11,7 +11,7 @@ namespace GwentInterpreters
             void VisitForStmt(For stmt); // Añadido para la clase For
 
             void VisitEffectStmt(EffectStmt stmt);
-            void VisitActionStmt(ActionStmt stmt);
+            void VisitActionStmt(Action stmt);
             void VisitCardStmt(CardStmt stmt);
             void VisitOnActivationStmt(OnActivationStmt stmt);
             void VisitSelectorStmt(SelectorStmt stmt);
@@ -90,10 +90,10 @@ namespace GwentInterpreters
     public class For : Stmt
     {
         public Token Iterator { get; }
-        public Expression Iterable { get; }
+        public Token Iterable { get; }
         public List<Stmt> Body { get; }
 
-        public For(Token iterator, Expression iterable, List<Stmt> body)
+        public For(Token iterator, Token iterable, List<Stmt> body)
         {
             Iterator = iterator;
             Iterable = iterable;
@@ -109,10 +109,10 @@ namespace GwentInterpreters
     public class EffectStmt : Stmt
     {
         public string Name { get; }
-        public Dictionary<string, Type> Params { get; }
-        public ActionStmt Action { get; }
+        public List<Parameter> Params { get; }
+        public Action Action { get; }
 
-        public EffectStmt(string name, Dictionary<string, Type> @params, ActionStmt action)
+        public EffectStmt(string name, List<Parameter> @params, Action action)
         {
             Name = name;
             Params = @params;
@@ -125,14 +125,27 @@ namespace GwentInterpreters
         }
     }
 
-    public class ActionStmt : Stmt
+    public class Parameter
     {
-        public Expression Targets { get; }
+        public Token Name { get; }
+        public Token Type { get; }
+
+        public Parameter(Token name, Token type)
+        {
+            Name = name;
+            Type = type;
+        }
+    }
+    public class Action : Stmt
+    {
+        public Token TargetParam { get; }
+        public Token ContextParam { get; }
         public List<Stmt> Body { get; }
 
-        public ActionStmt(Expression targets, List<Stmt> body)
+        public Action(Token targetParam, Token contextParam, List<Stmt> body)
         {
-            Targets = targets;
+            TargetParam = targetParam;
+            ContextParam = contextParam;
             Body = body;
         }
 

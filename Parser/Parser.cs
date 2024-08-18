@@ -54,20 +54,26 @@ namespace GwentInterpreters
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Name'.");
             string name = Consume(TokenType.STRING, "Se esperaba un nombre de efecto.").Lexeme;
 
-            // Inicialización del diccionario de parámetros con tipos (opcional)
-            Dictionary<string, Type> parameters = null;
+            // Consumimos la coma después del nombre
+            Consume(TokenType.COMMA, "Se esperaba ',' después del nombre del efecto.");
+
+            // Inicialización de la lista de parámetros (opcional)
+            List<Parameter> parameters = null;
 
             // Verificamos si 'Params' está presente
             if (Match(TokenType.PARAMS))
             {
                 Consume(TokenType.COLON, "Se esperaba ':' después de 'Params'.");
                 parameters = ParseParams();
+
+                // Consumimos la coma después de los parámetros
+                Consume(TokenType.COMMA, "Se esperaba ',' después del bloque de parámetros.");
             }
 
             // Parseo de la acción
             Consume(TokenType.ACTION, "Se esperaba la clave 'Action' dentro del efecto.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Action'.");
-            ActionStmt action = ParseAction();
+            Action action = ParseAction();
 
             // Consumimos la clausura del bloque '}'
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de efecto.");
@@ -75,17 +81,10 @@ namespace GwentInterpreters
             // Retornamos un nodo de declaración de efecto con todos los campos necesarios
             return new EffectStmt(name, parameters, action);
         }
-        private ActionStmt ParseAction()
-        {
-            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' para el bloque de acción.");
-            Expression targets = Expression(); // Asumimos que tienes una forma de parsear 'targets'
-            List<Stmt> body = Block(); // Reutilizamos el método Block para el cuerpo de la acción
-            return new ActionStmt(targets, body);
-        }
 
-        private Dictionary<string, Type> ParseParams()
+        private List<Parameter> ParseParams()
         {
-            var parameters = new Dictionary<string, Type>();
+            var parameters = new List<Parameter>();
 
             // Consumimos '{' que abre el bloque de parámetros
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'Params'.");
@@ -100,10 +99,10 @@ namespace GwentInterpreters
                 Consume(TokenType.COLON, "Se esperaba ':' después del nombre del parámetro.");
 
                 // Parseamos el tipo del parámetro usando los especificadores
-                Type paramType = ParseType();
+                Token paramType = ParseTypeToken();
 
-                // Guardamos el par clave-tipo en el diccionario
-                parameters[paramName.Lexeme] = paramType;
+                // Creamos una nueva instancia de Property y la añadimos a la lista
+                parameters.Add(new Parameter(paramName, paramType));
 
                 // Si hay una coma, avanzamos para el siguiente parámetro
                 if (!Match(TokenType.COMMA))
@@ -118,14 +117,27 @@ namespace GwentInterpreters
             return parameters;
         }
 
-        private Type ParseType()
+        private Token ParseTypeToken()
         {
-            if (Match(TokenType.NUMBER_SPECIFIER)) return typeof(int);
-            if (Match(TokenType.STRING_SPECIFIER)) return typeof(string);
-            if (Match(TokenType.BOOLEAN_SPECIFIER)) return typeof(bool);
+            if (Match(TokenType.NUMBER_SPECIFIER)) return Previous();
+            if (Match(TokenType.STRING_SPECIFIER)) return Previous();
+            if (Match(TokenType.BOOLEAN_SPECIFIER)) return Previous();
             throw Error(Peek(), "Tipo no válido.");
         }
+        private Action ParseAction()
+        {
+            Consume(TokenType.LEFT_PAREN, "Se esperaba '(' después de 'Action'.");
+            Token targetParam = Consume(TokenType.IDENTIFIER, "Se esperaba el parámetro objetivo.");
+            Consume(TokenType.COMMA, "Se esperaba ',' después del parámetro objetivo.");
+            Token contextParam = Consume(TokenType.IDENTIFIER, "Se esperaba el parámetro de contexto.");
+            Consume(TokenType.RIGHT_PAREN, "Se esperaba ')' después de los parámetros de la acción.");
+            Consume(TokenType.LAMBDA, "Se esperaba '=>' después de los parámetros de la acción.");
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' antes del cuerpo de la acción.");
+            var body = Block();
+            // No es necesario consumir '}' aquí, ya que Block() lo maneja
 
+            return new Action(targetParam, contextParam, body);
+        }
 
 
 
@@ -139,6 +151,7 @@ namespace GwentInterpreters
             }
 
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después del bloque.");
+            Consume(TokenType.SEMICOLON, "Se esperaba punto y coma ';' después del bloque.");
             return statements;
         }
         private Stmt Statement()
@@ -173,13 +186,14 @@ namespace GwentInterpreters
         {
             Token iterator = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre de variable para el iterador.");
             Consume(TokenType.IN, "Se esperaba 'in' después del nombre del iterador.");
-            Expression iterable = Expression();
+            Token iterable = Consume(TokenType.IDENTIFIER, "Se esperaba un nombre de variable para la lista de iteración.");
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de la expresión de iteración.");
 
             List<Stmt> body = Block();
 
             return new For(iterator, iterable, body);
         }
+
 
         private Stmt IfStatement()
         {
