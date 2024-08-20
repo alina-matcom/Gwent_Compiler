@@ -139,7 +139,6 @@ namespace GwentInterpreters
 
         private Stmt CardDeclaration()
         {
-            Consume(TokenType.CARD, "Se esperaba la palabra clave 'card'.");
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'card'.");
 
             // Parseo de los atributos de la carta
@@ -323,11 +322,11 @@ namespace GwentInterpreters
 
                     if (equals.Type == TokenType.PLUS_EQUAL)
                     {
-                        value = new BinaryExpression(new Variable(name), new Token(TokenType.PLUS, "+", null, equals.Line), value);
+                        value = new BinaryExpression(new Variable(name), new Token(TokenType.PLUS, "+", null, equals.Location), value);
                     }
                     else if (equals.Type == TokenType.MINUS_EQUAL)
                     {
-                        value = new BinaryExpression(new Variable(name), new Token(TokenType.MINUS, "-", null, equals.Line), value);
+                        value = new BinaryExpression(new Variable(name), new Token(TokenType.MINUS, "-", null, equals.Location), value);
                     }
 
                     return new AssignExpression(name, value);
