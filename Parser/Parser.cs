@@ -30,8 +30,8 @@ namespace GwentInterpreters
             try
             {
                 if (Match(TokenType.EFFECT)) return EffectDeclaration();
-                // if (Match(TokenType.CARD)) return CardDeclaration();
-                // Puedes manejar otros tipos de declaraciones si es necesario.
+                if (Match(TokenType.CARD)) return CardDeclaration();
+
 
                 throw Error(Peek(), "Expected 'effect' or 'card' declaration.");
             }
@@ -140,6 +140,94 @@ namespace GwentInterpreters
         }
 
 
+        private Stmt CardDeclaration()
+        {
+            Consume(TokenType.CARD, "Se esperaba la palabra clave 'card'.");
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'card'.");
+
+            // Parseo de los atributos de la carta
+            string type = ParseStringAttribute(TokenType.TYPE, "Type");
+            string name = ParseStringAttribute(TokenType.NAME, "Name");
+            string faction = ParseStringAttribute(TokenType.FACTION, "Faction");
+            Expression power = ParseExpressionAttribute(TokenType.POWER, "Power");
+            List<string> range = ParseStringListAttribute(TokenType.RANGE, "Range");
+
+            // Parseo de la lista de efectos en OnActivation
+            Consume(TokenType.ONACTIVATION, "Se esperaba la clave 'OnActivation'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'OnActivation'.");
+            List<Effect> onActivation = ParseEffects();
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de carta.");
+
+            return new CardStmt(type, name, faction, power, range, onActivation);
+        }
+
+        private string ParseStringAttribute(TokenType expectedTokenType, string attributeName)
+        {
+            Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
+            Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
+            return Consume(TokenType.STRING, $"Se esperaba un valor de cadena para '{attributeName}'.").Lexeme;
+        }
+
+        private List<string> ParseStringListAttribute(TokenType expectedTokenType, string attributeName)
+        {
+            Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
+            Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
+            Consume(TokenType.LEFT_BRACKET, $"Se esperaba '[' después de ':' en '{attributeName}'.");
+
+            List<string> values = new List<string>();
+            do
+            {
+                values.Add(Consume(TokenType.STRING, $"Se esperaba un valor de cadena en la lista de '{attributeName}'.").Lexeme);
+            } while (Match(TokenType.COMMA));
+
+            Consume(TokenType.RIGHT_BRACKET, $"Se esperaba ']' al final de la lista de '{attributeName}'.");
+
+            return values;
+        }
+
+        private Expression ParseExpressionAttribute(TokenType expectedTokenType, string attributeName)
+        {
+            Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
+            Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
+
+            // Parse the expression and ensure it's numeric
+            Expression expr = Expression();
+
+            // Add a check here to validate that the expression is numeric
+            if (!IsNumericExpression(expr))
+            {
+                throw Error(Peek(), $"La expresión para '{attributeName}' debe ser numérica.");
+            }
+
+            return expr;
+        }
+
+        private bool IsNumericExpression(Expression expr)
+        {
+            // Recursively check if the expression is a valid numeric expression
+            if (expr is LiteralExpression)
+            {
+                return ((LiteralExpression)expr).Value is double;
+            }
+            else if (expr is BinaryExpression)
+            {
+                return IsNumericExpression(((BinaryExpression)expr).Left) &&
+                       IsNumericExpression(((BinaryExpression)expr).Right);
+            }
+            else if (expr is UnaryExpression)
+            {
+                return IsNumericExpression(((UnaryExpression)expr).Right);
+            }
+            else if (expr is GroupingExpression)
+            {
+                return IsNumericExpression(((GroupingExpression)expr).Expression);
+            }
+
+            return false; // If it's anything else, it's not a numeric expression
+        }
+
+
 
         private List<Stmt> Block()
         {
@@ -225,10 +313,9 @@ namespace GwentInterpreters
 
         private Expression Assignment()
         {
-            // Llamamos a Or() en lugar de Equality() para integrar la lógica adicional.
             Expression expr = Or();
 
-            if (Match(TokenType.ASSIGN))
+            if (Match(TokenType.ASSIGN, TokenType.PLUS_EQUAL, TokenType.MINUS_EQUAL))
             {
                 Token equals = Previous();
                 Expression value = Assignment();
@@ -236,15 +323,29 @@ namespace GwentInterpreters
                 if (expr is Variable variableExpr)
                 {
                     Token name = variableExpr.name;
+
+                    if (equals.Type == TokenType.PLUS_EQUAL)
+                    {
+                        value = new BinaryExpression(new Variable(name), new Token(TokenType.PLUS, "+", null, equals.Line), value);
+                    }
+                    else if (equals.Type == TokenType.MINUS_EQUAL)
+                    {
+                        value = new BinaryExpression(new Variable(name), new Token(TokenType.MINUS, "-", null, equals.Line), value);
+                    }
+
                     return new AssignExpression(name, value);
                 }
+                else if (expr is Get getExpr)
+                {
+                    return new Set(getExpr.Object, getExpr.Name, value);
+                }
 
-                // Error: Se esperaba un nombre de variable a la izquierda del '='
-                Error(equals, "Se esperaba un nombre de variable.");
+                Error(equals, "Se esperaba un nombre de variable o una propiedad.");
             }
 
             return expr;
         }
+
 
         // Método Or() que maneja la lógica de los operadores lógicos 'or' y 'and'.
         private Expression Or()
@@ -326,16 +427,80 @@ namespace GwentInterpreters
             }
             return expr;
         }
-
         private Expression Unary()
         {
-            if (Match(TokenType.NOT_EQUAL, TokenType.MINUS))
+            // Ajustado para usar INCREMENT y DECREMENT en lugar de PLUS_PLUS y MINUS_MINUS
+            if (Match(TokenType.NOT_EQUAL, TokenType.MINUS, TokenType.INCREMENT, TokenType.DECREMENT))
             {
                 Token operador = Previous();
                 Expression right = Unary();
                 return new UnaryExpression(operador, right);
             }
-            return Primary();
+            return Postfix();
+        }
+
+        private Expression Postfix()
+        {
+            Expression expr = Call();
+
+            while (Match(TokenType.INCREMENT, TokenType.DECREMENT))
+            {
+                Token operador = Previous();
+                expr = new PostfixExpression(expr, operador);
+            }
+
+            return expr;
+        }
+
+        private Expression Call()
+        {
+            Expression expr = Primary();
+
+            // Booleano para verificar si ya se realizó una llamada
+            bool hasCalled = false;
+
+            while (true)
+            {
+                if (Match(TokenType.LEFT_PAREN))
+                {
+                    if (hasCalled)
+                    {
+                        // Lanzamos un error de parseo usando tu manejo de errores
+                        throw Error(Peek(), "Las llamadas anidadas no están permitidas.");
+                    }
+
+                    expr = FinishCall(expr);
+                    hasCalled = true; // Marcamos que ya se ha realizado una llamada
+                }
+                else if (Match(TokenType.DOT))
+                {
+                    Token name = Consume(TokenType.IDENTIFIER, "Se esperaba el nombre de la propiedad después de '.'.");
+                    expr = new Get(expr, name);
+                }
+                else
+                {
+                    break; // Salimos del bucle si no hay más llamadas ni accesos a propiedades
+                }
+            }
+
+            return expr;
+        }
+
+        private Expression FinishCall(Expression callee)
+        {
+            var arguments = new List<Expression>();
+
+            if (!Check(TokenType.RIGHT_PAREN))
+            {
+                do
+                {
+                    arguments.Add(Expression());
+                }
+                while (Match(TokenType.COMMA));
+            }
+
+            var paren = Consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.");
+            return new Call(callee, paren, arguments);
         }
 
         private Expression Primary()

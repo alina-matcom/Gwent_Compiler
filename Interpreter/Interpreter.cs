@@ -119,6 +119,55 @@ namespace GwentInterpreters
             }
         }
 
+        public object VisitGetExpression(Get expr)
+        {
+            object obj = Evaluate(expr.Object);
+            if (obj is Card card)
+            {
+                return GetProperty(card, expr.Name);
+            }
+            else if (obj is Context context)
+            {
+                return GetProperty(context, expr.Name);
+            }
+            throw new RuntimeError(expr.Name, "Only instances of Card or Context have properties.");
+        }
+
+        private object GetProperty(object obj, Token name)
+        {
+            var property = obj.GetType().GetProperty(name.Lexeme);
+            if (property != null)
+            {
+                var value = property.GetValue(obj);
+                if (value != null)
+                {
+                    return value;
+                }
+            }
+            throw new RuntimeError(name, $"Undefined property '{name.Lexeme}'.");
+        }
+
+        public object VisitSetExpression(Set expr)
+        {
+            object obj = Evaluate(expr.Object);
+            if (!(obj is Card) && !(obj is Context))
+            {
+                throw new RuntimeError(expr.Name, "Solo las instancias de Card o Context tienen campos.");
+            }
+
+            object value = Evaluate(expr.Value);
+            return SetProperty(obj, expr.Name, value);
+        }
+        private object SetProperty(object obj, Token name, object value)
+        {
+            var property = obj.GetType().GetProperty(name.Lexeme);
+            if (property != null)
+            {
+                property.SetValue(obj, value);
+                return value;
+            }
+            throw new RuntimeError(name, $"Undefined property '{name.Lexeme}'.");
+        }
         public object VisitVariableExpr(Variable expr)
         {
             return environment.Get(expr.name);
@@ -176,11 +225,52 @@ namespace GwentInterpreters
                 case TokenType.MINUS:
                     CheckNumberOperand(expr.Operator, right);
                     return -(double)right;
+                case TokenType.INCREMENT: // Ajustado para usar INCREMENT
+                    return Increment(expr.Operator, expr.Right, true);
+                case TokenType.DECREMENT: // Ajustado para usar DECREMENT
+                    return Decrement(expr.Operator, expr.Right, true);
             }
             // Inalcanzable
             return null;
         }
 
+        public object VisitPostfixExpression(PostfixExpression expr)
+        {
+            switch (expr.Operator.Type)
+            {
+                case TokenType.INCREMENT: // Ajustado para usar INCREMENT
+                    return Increment(expr.Operator, expr.Left, false);
+                case TokenType.DECREMENT: // Ajustado para usar DECREMENT
+                    return Decrement(expr.Operator, expr.Left, false);
+            }
+            // Inalcanzable
+            return null;
+        }
+        private object Increment(Token _operator, Expression expr, bool isPrefix)
+        {
+            if (expr is Variable variableExpr)
+            {
+                object value = environment.Get(variableExpr.name);
+                CheckNumberOperand(_operator, value);
+                double newValue = (double)value + 1;
+                environment.Assign(variableExpr.name, newValue);
+                return isPrefix ? newValue : value;
+            }
+            throw new RuntimeError(_operator, "El operando debe ser una variable.");
+        }
+
+        private object Decrement(Token _operator, Expression expr, bool isPrefix)
+        {
+            if (expr is Variable variableExpr)
+            {
+                object value = environment.Get(variableExpr.name);
+                CheckNumberOperand(_operator, value);
+                double newValue = (double)value - 1;
+                environment.Assign(variableExpr.name, newValue);
+                return isPrefix ? newValue : value;
+            }
+            throw new RuntimeError(_operator, "El operando debe ser una variable.");
+        }
         public object VisitBinaryExpression(BinaryExpression expr)
         {
             object left = Evaluate(expr.Left);

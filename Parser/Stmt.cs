@@ -160,11 +160,11 @@ namespace GwentInterpreters
         public string Type { get; }
         public string Name { get; }
         public string Faction { get; }
-        public int Power { get; }
+        public Expression Power { get; }
         public List<string> Range { get; }
-        public List<OnActivationStmt> OnActivation { get; }
+        public List<Effect> OnActivation { get; }
 
-        public CardStmt(string type, string name, string faction, int power, List<string> range, List<OnActivationStmt> onActivation)
+        public CardStmt(string type, string name, string faction, Expression power, List<string> range, List<Effect> onActivation)
         {
             Type = type;
             Name = name;

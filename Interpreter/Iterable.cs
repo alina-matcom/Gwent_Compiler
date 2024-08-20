@@ -23,6 +23,39 @@ namespace GwentInterpreters
         }
     }
 
+    public class Context
+    {
+        private int triggerPlayer;
+        private List<Card> board;
+        private Dictionary<int, Iterable> hands;
+        private Dictionary<int, Iterable> fields;
+        private Dictionary<int, Iterable> graveyards;
+        private Dictionary<int, Iterable> decks;
+
+        public Context(int triggerPlayer)
+        {
+            this.triggerPlayer = triggerPlayer;
+            board = new List<Card>();
+            hands = new Dictionary<int, Iterable>();
+            fields = new Dictionary<int, Iterable>();
+            graveyards = new Dictionary<int, Iterable>();
+            decks = new Dictionary<int, Iterable>();
+        }
+
+        public int TriggerPlayer => triggerPlayer;
+        public List<Card> Board => board;
+
+        public Iterable HandOfPlayer(int player) => hands.ContainsKey(player) ? hands[player] : new Iterable();
+        public Iterable FieldOfPlayer(int player) => fields.ContainsKey(player) ? fields[player] : new Iterable();
+        public Iterable GraveyardOfPlayer(int player) => graveyards.ContainsKey(player) ? graveyards[player] : new Iterable();
+        public Iterable DeckOfPlayer(int player) => decks.ContainsKey(player) ? decks[player] : new Iterable();
+
+        public Iterable Hand => HandOfPlayer(triggerPlayer);
+        public Iterable Field => FieldOfPlayer(triggerPlayer);
+        public Iterable Graveyard => GraveyardOfPlayer(triggerPlayer);
+        public Iterable Deck => DeckOfPlayer(triggerPlayer);
+    }
+
     public class Iterable : IList<Card>
     {
         private List<Card> cards;

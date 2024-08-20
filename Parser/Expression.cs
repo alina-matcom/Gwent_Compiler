@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace GwentInterpreters
 {
@@ -18,7 +19,11 @@ namespace GwentInterpreters
             T VisitGroupingExpression(GroupingExpression expr);
             T VisitVariableExpr(Variable expr);
             T VisitAssignExpression(AssignExpression expr);
-            T VisitLogicalExpression(LogicalExpression expr); // Método añadido para LogicalExpression
+            T VisitLogicalExpression(LogicalExpression expr);
+            T VisitPostfixExpression(PostfixExpression expr);
+            T VisitCallExpression(Call expr);
+            T VisitGetExpression(Get expr); // Método añadido para GetExpression
+            T VisitSetExpression(Set expr); // Método añadido para SetExpression
         }
 
         public abstract T Accept<T>(IVisitor<T> visitor);
@@ -41,9 +46,6 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Represents a binary expression composed of a left expression, an operator token, and a right expression.
-    /// </summary>
     public class BinaryExpression : Expression
     {
         public Expression Left { get; }
@@ -63,9 +65,6 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Represents a unary expression composed of an operator token and a right expression.
-    /// </summary>
     public class UnaryExpression : Expression
     {
         public Token Operator { get; }
@@ -83,9 +82,6 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Represents a literal value expression, such as a number, boolean or string.
-    /// </summary>
     public class LiteralExpression : Expression
     {
         public object Value { get; }
@@ -101,9 +97,6 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Represents a grouping expression that wraps another expression.
-    /// </summary>
     public class GroupingExpression : Expression
     {
         public Expression Expression { get; }
@@ -133,9 +126,6 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Represents a logical expression composed of a left expression, an operator token, and a right expression.
-    /// </summary>
     public class LogicalExpression : Expression
     {
         public Expression Left { get; }
@@ -152,6 +142,79 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitLogicalExpression(this);
+        }
+    }
+
+    public class PostfixExpression : Expression
+    {
+        public Expression Left { get; }
+        public Token Operator { get; }
+
+        public PostfixExpression(Expression left, Token operatorToken)
+        {
+            Left = left;
+            Operator = operatorToken;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitPostfixExpression(this);
+        }
+    }
+
+    public class Call : Expression
+    {
+        public Expression Callee { get; }
+        public Token Paren { get; }
+        public List<Expression> Arguments { get; }
+
+        public Call(Expression callee, Token paren, List<Expression> arguments)
+        {
+            Callee = callee;
+            Paren = paren;
+            Arguments = arguments;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitCallExpression(this);
+        }
+    }
+
+    public class Get : Expression
+    {
+        public Expression Object { get; }
+        public Token Name { get; }
+
+        public Get(Expression obj, Token name)
+        {
+            Object = obj;
+            Name = name;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitGetExpression(this);
+        }
+    }
+
+    // Nueva clase para las expresiones de asignación (setter)
+    public class Set : Expression
+    {
+        public Expression Object { get; }
+        public Token Name { get; }
+        public Expression Value { get; }
+
+        public Set(Expression obj, Token name, Expression value)
+        {
+            Object = obj;
+            Name = name;
+            Value = value;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitSetExpression(this);
         }
     }
 }
