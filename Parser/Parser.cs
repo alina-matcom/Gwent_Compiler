@@ -43,9 +43,6 @@ namespace GwentInterpreters
         }
         private Stmt EffectDeclaration()
         {
-            // Consumimos 'effect'
-            Consume(TokenType.EFFECT, "Se esperaba la palabra clave 'effect'.");
-
             // Consumimos la apertura del bloque '{'
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'effect'.");
 
