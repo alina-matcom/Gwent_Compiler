@@ -29,6 +29,28 @@ namespace GwentInterpreters
                 {
                     Console.WriteLine(token.ToString());
                 }
+
+                // Crea una instancia del Parser con la lista de tokens
+                Parser parser = new Parser(tokens);
+
+                // Obtiene la lista de declaraciones (statements)
+                List<Stmt> statements = parser.Parse();
+
+                // Imprime los resultados del parser
+                Console.WriteLine("Declaraciones parseadas:");
+                foreach (Stmt statement in statements)
+                {
+                    Console.WriteLine(statement.ToString());
+                }
+
+                // Crea una instancia del Interpreter con las declaraciones
+                Interpreter interpreter = new Interpreter();
+
+                // Interpreta las declaraciones
+                interpreter.Interpret(statements);
+
+                // Imprime un mensaje indicando que la interpretación se ha completado
+                Console.WriteLine("Interpretación completada.");
             }
             catch (Exception ex)
             {
