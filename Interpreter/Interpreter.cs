@@ -118,23 +118,56 @@ namespace GwentInterpreters
                 Execute(stmt.Body);
             }
         }
+        public object VisitCallExpression(Call expr)
+        {
+            // Evaluar el objeto que contiene el método
+            object callee = Evaluate(expr.Callee);
+
+            // Verificar si es un método callable
+            if (callee is CallableMethod callableMethod)
+            {
+                // Evaluar los argumentos
+                var arguments = new List<object>();
+                foreach (var argument in expr.Arguments)
+                {
+                    arguments.Add(Evaluate(argument));
+                }
+
+                // Validar los argumentos
+                if (!callableMethod.CanInvoke(arguments, out string errorMessage))
+                {
+                    throw new RuntimeError(expr.Paren, errorMessage);
+                }
+
+                // Llamar al método
+                return callableMethod.Call(arguments);
+            }
+
+            // Usar el token Paren en el RuntimeError si no es un método callable
+            throw new RuntimeError(expr.Paren, "Solo se pueden llamar métodos.");
+        }
 
         public object VisitGetExpression(Get expr)
         {
             object obj = Evaluate(expr.Object);
+
+            // Verificar si es una instancia de Card o Context
             if (obj is Card card)
             {
-                return GetProperty(card, expr.Name);
+                return GetPropertyOrMethod(card, expr.Name);
             }
             else if (obj is Context context)
             {
-                return GetProperty(context, expr.Name);
+                return GetPropertyOrMethod(context, expr.Name);
             }
-            throw new RuntimeError(expr.Name, "Only instances of Card or Context have properties.");
+
+            throw new RuntimeError(expr.Name, "Only instances of Card or Context have properties or methods.");
         }
 
-        private object GetProperty(object obj, Token name)
+
+        private object GetPropertyOrMethod(object obj, Token name)
         {
+            // Obtener la propiedad
             var property = obj.GetType().GetProperty(name.Lexeme);
             if (property != null)
             {
@@ -144,7 +177,15 @@ namespace GwentInterpreters
                     return value;
                 }
             }
-            throw new RuntimeError(name, $"Undefined property '{name.Lexeme}'.");
+
+            // Obtener el método
+            var method = obj.GetType().GetMethod(name.Lexeme);
+            if (method != null)
+            {
+                return new CallableMethod(obj, method);
+            }
+
+            throw new RuntimeError(name, $"Undefined property or method '{name.Lexeme}'.");
         }
 
         public object VisitSetExpression(Set expr)

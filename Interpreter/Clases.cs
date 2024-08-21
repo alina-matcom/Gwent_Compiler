@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace GwentInterpreters
 {
@@ -112,4 +113,55 @@ namespace GwentInterpreters
             }
         }
     }
+
+    public class CallableMethod
+    {
+        private readonly object _instance;
+        private readonly MethodInfo _method;
+
+        public CallableMethod(object instance, MethodInfo method)
+        {
+            _instance = instance;
+            _method = method;
+        }
+
+        public bool CanInvoke(List<object> arguments, out string errorMessage)
+        {
+            var parameters = _method.GetParameters();
+            if (parameters.Length != arguments.Count)
+            {
+                errorMessage = $"Se esperaban {parameters.Length} argumentos, pero se obtuvieron {arguments.Count}.";
+                return false;
+            }
+
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                var arg = arguments[i];
+                var paramType = parameters[i].ParameterType;
+                if (arg != null && !paramType.IsAssignableFrom(arg.GetType()))
+                {
+                    errorMessage = $"El argumento {i + 1} no puede ser convertido al tipo {paramType.Name}.";
+                    return false;
+                }
+            }
+
+            errorMessage = null;
+            return true;
+        }
+
+        public object Call(List<object> arguments)
+        {
+            var parameters = _method.GetParameters();
+            var convertedArgs = new object[arguments.Count];
+            for (int i = 0; i < arguments.Count; i++)
+            {
+                var arg = arguments[i];
+                var paramType = parameters[i].ParameterType;
+                convertedArgs[i] = Convert.ChangeType(arg, paramType);
+            }
+
+            return _method.Invoke(_instance, convertedArgs);
+        }
+    }
+
 }
