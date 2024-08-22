@@ -24,6 +24,9 @@ namespace GwentInterpreters
             T VisitCallExpression(Call expr);
             T VisitGetExpression(Get expr); // Método añadido para GetExpression
             T VisitSetExpression(Set expr); // Método añadido para SetExpression
+            T VisitEffectInvocationExpr(EffectInvocation expr);
+            T VisitSelectorExpr(Selector expr);
+            T VisitLambdaExpression(LambdaExpression lambda);
         }
 
         public abstract T Accept<T>(IVisitor<T> visitor);
@@ -217,4 +220,61 @@ namespace GwentInterpreters
             return visitor.VisitSetExpression(this);
         }
     }
+
+    public class EffectInvocation : Expression
+    {
+        public string Name { get; }
+        public Dictionary<string, Expression> Parameters { get; }
+
+        public EffectInvocation(string name, Dictionary<string, Expression> parameters)
+        {
+            Name = name;
+            Parameters = parameters;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitEffectInvocationExpr(this);
+        }
+    }
+
+    /// <summary>
+    /// Nodo que representa un selector.
+    /// </summary>
+    public class Selector : Expression
+    {
+        public string Source { get; }
+        public bool Single { get; }
+        public Expression Predicate { get; }
+
+        public Selector(string source, bool single, Expression predicate)
+        {
+            Source = source;
+            Single = single;
+            Predicate = predicate;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitSelectorExpr(this);
+        }
+    }
+
+    public class LambdaExpression : Expression
+    {
+        public Token Parameter { get; }
+        public Expression Body { get; }
+
+        public LambdaExpression(Token parameter, Expression body)
+        {
+            Parameter = parameter;
+            Body = body;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitLambdaExpression(this);
+        }
+    }
+
 }

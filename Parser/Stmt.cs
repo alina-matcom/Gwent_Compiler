@@ -13,9 +13,7 @@ namespace GwentInterpreters
             void VisitEffectStmt(EffectStmt stmt);
             void VisitActionStmt(Action stmt);
             void VisitCardStmt(CardStmt stmt);
-            void VisitOnActivationStmt(OnActivationStmt stmt);
-            void VisitSelectorStmt(SelectorStmt stmt);
-            void VisitPostActionStmt(PostActionStmt stmt);
+            void VisitEffectAction(EffectAction stmt);
         }
 
         public abstract void Accept(IVisitor visitor);
@@ -155,6 +153,25 @@ namespace GwentInterpreters
         }
     }
 
+    public class EffectAction : Stmt
+    {
+        public EffectInvocation Effect { get; }
+        public Selector Selector { get; }
+        public EffectAction PostAction { get; }
+
+        public EffectAction(EffectInvocation effect, Selector selector, EffectAction postAction)
+        {
+            Effect = effect;
+            Selector = selector;
+            PostAction = postAction;
+        }
+
+        public override void Accept(IVisitor visitor)
+        {
+            visitor.VisitEffectAction(this);
+        }
+    }
+
     public class CardStmt : Stmt
     {
         public string Type { get; }
@@ -162,9 +179,9 @@ namespace GwentInterpreters
         public string Faction { get; }
         public Expression Power { get; }
         public List<string> Range { get; }
-        public List<Effect> OnActivation { get; }
+        public List<EffectAction> OnActivation { get; }
 
-        public CardStmt(string type, string name, string faction, Expression power, List<string> range, List<Effect> onActivation)
+        public CardStmt(string type, string name, string faction, Expression power, List<string> range, List<EffectAction> onActivation)
         {
             Type = type;
             Name = name;
@@ -177,61 +194,6 @@ namespace GwentInterpreters
         public override void Accept(IVisitor visitor)
         {
             visitor.VisitCardStmt(this);
-        }
-    }
-
-    public class OnActivationStmt : Stmt
-    {
-        public EffectStmt Effect { get; }
-        public SelectorStmt Selector { get; }
-        public PostActionStmt PostAction { get; }
-
-        public OnActivationStmt(EffectStmt effect, SelectorStmt selector, PostActionStmt postAction)
-        {
-            Effect = effect;
-            Selector = selector;
-            PostAction = postAction;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitOnActivationStmt(this);
-        }
-    }
-
-    public class SelectorStmt : Stmt
-    {
-        public string Source { get; }
-        public bool Single { get; }
-        public Expression Predicate { get; }
-
-        public SelectorStmt(string source, bool single, Expression predicate)
-        {
-            Source = source;
-            Single = single;
-            Predicate = predicate;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitSelectorStmt(this);
-        }
-    }
-
-    public class PostActionStmt : Stmt
-    {
-        public EffectStmt Effect { get; }
-        public SelectorStmt Selector { get; }
-
-        public PostActionStmt(EffectStmt effect, SelectorStmt selector)
-        {
-            Effect = effect;
-            Selector = selector;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitPostActionStmt(this);
         }
     }
 }

@@ -151,11 +151,146 @@ namespace GwentInterpreters
             // Parseo de la lista de efectos en OnActivation
             Consume(TokenType.ONACTIVATION, "Se esperaba la clave 'OnActivation'.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'OnActivation'.");
-            List<Effect> onActivation = ParseEffects();
+            List<EffectAction> onActivation = ParseEffects();
 
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de carta.");
 
             return new CardStmt(type, name, faction, power, range, onActivation);
+        }
+
+        private List<EffectAction> ParseEffects()
+        {
+            List<EffectAction> effects = new List<EffectAction>();
+
+            Consume(TokenType.LEFT_BRACKET, "Se esperaba '[' después de 'OnActivation'.");
+            while (!Check(TokenType.RIGHT_BRACKET) && !IsAtEnd())
+            {
+                effects.Add(ParseEffect()); // Ahora devuelve un EffectAction
+                if (!Check(TokenType.RIGHT_BRACKET))
+                {
+                    Consume(TokenType.COMMA, "Se esperaba ',' entre efectos.");
+                }
+            }
+            Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' al final de la lista de efectos.");
+
+            return effects;
+        }
+
+
+        private EffectAction ParseEffect(Selector parentSelector = null, bool isPostAction = false)
+        {
+            Consume(TokenType.LEFT_BRACE, "Se esperaba '{' al comienzo de un efecto.");
+
+            // Parseo de la invocación del efecto.
+            Consume(TokenType.EFFECT, "Se esperaba la clave 'Effect'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Effect'.");
+            EffectInvocation effect = ParseEffectInvocation();
+
+            // Parseo del selector.
+            Selector selector = null;
+            if (Match(TokenType.SELECTOR))
+            {
+                Consume(TokenType.COLON, "Se esperaba ':' después de 'Selector'.");
+                selector = ParseSelector(isPostAction);
+            }
+            else if (parentSelector != null)
+            {
+                // Usar el selector del efecto padre si no se especifica uno en el PostAction.
+                selector = parentSelector;
+            }
+            else
+            {
+                throw Error(Peek(), "Se esperaba un 'Selector' o un 'parentSelector' en la declaración de PostAction.");
+            }
+
+            // Parseo de la PostAction (opcional).
+            EffectAction postAction = null;
+            if (Match(TokenType.POSTACTION))
+            {
+                Consume(TokenType.COLON, "Se esperaba ':' después de 'PostAction'.");
+                postAction = ParseEffect(selector, true); // Aquí pasamos true indicando que es un PostAction
+            }
+
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de efecto.");
+
+            return new EffectAction(effect, selector, postAction);
+        }
+
+
+        private EffectInvocation ParseEffectInvocation()
+        {
+            string name;
+            Dictionary<string, Expression> parameters = new Dictionary<string, Expression>();
+
+            if (Check(TokenType.STRING))
+            {
+                // Cuando el nombre del efecto está dado directamente como una cadena
+                name = Consume(TokenType.STRING, "Se esperaba el nombre del efecto como cadena.").Lexeme;
+            }
+            else
+            {
+                // Cuando el nombre del efecto y los parámetros están entre llaves
+                Consume(TokenType.LEFT_BRACE, "Se esperaba '{' en la declaración del efecto.");
+                name = ParseStringAttribute(TokenType.NAME, "Name");
+
+                // Esperar una coma después del nombre del efecto
+                Consume(TokenType.COMMA, "Se esperaba ',' después del nombre del efecto.");
+
+                while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
+                {
+                    string paramName = Peek().Lexeme; // Obtener el nombre del parámetro
+                    Advance(); // Avanzar al siguiente token
+                    Consume(TokenType.COLON, $"Se esperaba ':' después de '{paramName}'.");
+
+                    // Aquí se debe parsear el valor del parámetro
+                    Expression paramValue = Expression(); // Suponiendo que 'Expression()' maneja la expresión del valor del parámetro
+                    parameters[paramName] = paramValue;
+
+                    // Consumir ',' si no es el final del bloque de parámetros
+                    if (!Check(TokenType.RIGHT_BRACE))
+                    {
+                        Consume(TokenType.COMMA, "Se esperaba ',' entre parámetros.");
+                    }
+                }
+
+                Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración del efecto.");
+            }
+
+            return new EffectInvocation(name, parameters);
+        }
+
+        private Selector ParseSelector(bool isPostAction)
+        {
+            // Se espera que siempre haya un 'Source'.
+            string source = ParseStringAttribute(TokenType.SOURCE, "Source");
+            Consume(TokenType.COMMA, "Se esperaba ',' después de 'Source'.");
+
+            // Verifica si el source es "parent" y si está siendo usado en un PostAction
+            if (source == "parent" && !isPostAction)
+            {
+                throw Error(Peek(), "'parent' solo puede ser usado como 'source' en un 'PostAction'.");
+            }
+
+            Consume(TokenType.SINGLE, "Se esperaba la clave 'Single'.");
+            bool single = Consume(TokenType.BOOLEAN, "Se esperaba un valor booleano para 'Single'.").Literal.Equals(true);
+            Consume(TokenType.COMMA, "Se esperaba ',' después de 'Single'.");
+
+            Consume(TokenType.PREDICATE, "Se esperaba la clave 'Predicate'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Predicate'.");
+
+            Expression predicate = ParsePredicate();
+
+            return new Selector(source, single, predicate);
+        }
+        private Expression ParsePredicate()
+        {
+            // Parseamos la expresión del predicado como una función lambda
+            Consume(TokenType.LEFT_PAREN, "Se esperaba '(' al inicio del predicado.");
+            var parameter = Consume(TokenType.IDENTIFIER, "Se esperaba un parámetro para el predicado.");
+            Consume(TokenType.RIGHT_PAREN, "Se esperaba ')' después del parámetro del predicado.");
+            Consume(TokenType.LAMBDA, "Se esperaba '=>' después del parámetro del predicado.");
+            var body = Expression();
+            return new LambdaExpression(parameter, body);
         }
 
         private string ParseStringAttribute(TokenType expectedTokenType, string attributeName)

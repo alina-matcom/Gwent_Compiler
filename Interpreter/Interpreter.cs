@@ -151,7 +151,7 @@ namespace GwentInterpreters
         {
             object obj = Evaluate(expr.Object);
 
-            // Verificar si es una instancia de Card o Context
+            // Verificar si es una instancia de Card, Context o Iterable
             if (obj is Card card)
             {
                 return GetPropertyOrMethod(card, expr.Name);
@@ -160,8 +160,12 @@ namespace GwentInterpreters
             {
                 return GetPropertyOrMethod(context, expr.Name);
             }
+            else if (obj is Iterable iterable)
+            {
+                return GetPropertyOrMethod(iterable, expr.Name);
+            }
 
-            throw new RuntimeError(expr.Name, "Only instances of Card or Context have properties or methods.");
+            throw new RuntimeError(expr.Name, "Only instances of Card, Context, or Iterable have properties or methods.");
         }
 
 
