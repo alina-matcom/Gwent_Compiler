@@ -5,7 +5,7 @@ namespace GwentInterpreters
     public class Interpreter : Expression.IVisitor<object>, Stmt.IVisitor
     {
         private bool hadRuntimeError = false;
-        private Environment environment = new Environment();
+        internal Environment environment = new Environment();
         // Diccionario para almacenar los efectos definidos
         private Dictionary<string, EffectDefinition> effectDefinitions = new Dictionary<string, EffectDefinition>();
         public void Interpret(List<Stmt> statements)
@@ -31,15 +31,29 @@ namespace GwentInterpreters
         // Implementación de la visita al nodo EffectStmt
         public void VisitEffectStmt(EffectStmt stmt)
         {
-            // Creando una nueva definición de efecto y almacenando la acción
-            EffectDefinition effect = new EffectDefinition(stmt);
+            // Obtener la lista de parámetros del EffectStmt
+            List<Parameter> parameters = stmt.Params;
 
-            // Guardando la definición en el diccionario de efectos
+            // Visitar la expresión de acción para obtener la instancia de ActionFunction
+            ActionFunction actionFunction = (ActionFunction)VisitActionExpression(stmt.Action);
+
+
+            // Crear la nueva definición de efecto con los parámetros y la función de acción
+            EffectDefinition effect = new EffectDefinition(parameters, actionFunction);
+
+            // Guardar la definición en el diccionario de efectos
             if (effectDefinitions.ContainsKey(stmt.Name))
             {
                 throw new RuntimeError(null, $"El efecto '{stmt.Name}' ya está definido.");
             }
             effectDefinitions[stmt.Name] = effect;
+        }
+
+
+        public object VisitActionExpression(Action expr)
+        {
+            // Crear una nueva instancia de ActionFunction usando la declaración de acción.
+            return new ActionFunction(expr);
         }
 
 
@@ -62,7 +76,7 @@ namespace GwentInterpreters
         }
 
         // Método auxiliar para ejecutar un bloque de sentencias en un entorno específico
-        private void ExecuteBlock(List<Stmt> statements, Environment environment)
+        internal void ExecuteBlock(List<Stmt> statements, Environment environment)
         {
             // Guardamos el entorno anterior para poder restaurarlo más tarde
             Environment previous = this.environment;

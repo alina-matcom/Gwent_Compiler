@@ -22,13 +22,13 @@ namespace GwentInterpreters
             T VisitLogicalExpression(LogicalExpression expr);
             T VisitPostfixExpression(PostfixExpression expr);
             T VisitCallExpression(Call expr);
-            T VisitGetExpression(Get expr); // Método añadido para GetExpression
-            T VisitSetExpression(Set expr); // Método añadido para SetExpression
+            T VisitGetExpression(Get expr);
+            T VisitSetExpression(Set expr);
             T VisitEffectInvocationExpr(EffectInvocation expr);
             T VisitSelectorExpr(Selector expr);
             T VisitLambdaExpression(LambdaExpression lambda);
+            T VisitActionExpression(Action expr); // Nuevo método para Action
         }
-
         public abstract T Accept<T>(IVisitor<T> visitor);
     }
 
@@ -218,6 +218,24 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitSetExpression(this);
+        }
+    }
+    public class Action : Expression
+    {
+        public Token TargetParam { get; }
+        public Token ContextParam { get; }
+        public List<Stmt> Body { get; }
+
+        public Action(Token targetParam, Token contextParam, List<Stmt> body)
+        {
+            TargetParam = targetParam;
+            ContextParam = contextParam;
+            Body = body;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitActionExpression(this);
         }
     }
 

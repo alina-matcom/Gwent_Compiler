@@ -11,7 +11,6 @@ namespace GwentInterpreters
             void VisitForStmt(For stmt); // Añadido para la clase For
 
             void VisitEffectStmt(EffectStmt stmt);
-            void VisitActionStmt(Action stmt);
             void VisitCardStmt(CardStmt stmt);
             void VisitEffectAction(EffectAction stmt);
         }
@@ -134,24 +133,7 @@ namespace GwentInterpreters
             Type = type;
         }
     }
-    public class Action : Stmt
-    {
-        public Token TargetParam { get; }
-        public Token ContextParam { get; }
-        public List<Stmt> Body { get; }
-
-        public Action(Token targetParam, Token contextParam, List<Stmt> body)
-        {
-            TargetParam = targetParam;
-            ContextParam = contextParam;
-            Body = body;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitActionStmt(this);
-        }
-    }
+    
 
     public class EffectAction : Stmt
     {
