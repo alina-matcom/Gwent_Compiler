@@ -8,19 +8,21 @@ namespace GwentInterpreters
 {
     public class Card
     {
-        public string Type { get; set; }
-        public string Name { get; set; }
-        public string Faction { get; set; }
-        public int Power { get; set; }
-        public List<string> Range { get; set; }
+        public string Type { get; }
+        public string Name { get; }
+        public string Faction { get; }
+        public double Power { get; }
+        public List<string> Range { get; }
+        public List<EffectAction> OnActivation { get; }
 
-        public Card(string type, string name, string faction, int power, List<string> range)
+        public Card(string type, string name, string faction, double power, List<string> range, List<EffectAction> onActivation)
         {
             Type = type;
             Name = name;
             Faction = faction;
             Power = power;
             Range = range;
+            OnActivation = onActivation;
         }
     }
 

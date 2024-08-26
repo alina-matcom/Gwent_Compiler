@@ -49,6 +49,32 @@ namespace GwentInterpreters
             effectDefinitions[stmt.Name] = effect;
         }
 
+        public void VisitCardStmt(CardStmt stmt)
+        {
+            // Extraer y evaluar los atributos de la carta
+            string type = stmt.Type;
+            string name = stmt.Name;
+            string faction = stmt.Faction;
+
+            double power = Evaluate(stmt.Power) as double? ?? throw new RuntimeError(null, "La evaluación de Power no devolvió un número.");
+
+            // Obtener la lista de rangos
+            List<string> range = stmt.Range;
+
+            // Obtener la lista de efectos OnActivation
+            List<EffectAction> onActivation = stmt.OnActivation;
+
+            // Crear una nueva instancia de la carta
+            Card newCard = new Card(type, name, faction, power, range, onActivation);
+
+            // Aquí puedes agregar lógica adicional para manejar la nueva carta
+            // Por ejemplo, añadirla a un mazo, una mano, o un tablero
+            // environment.AddCardToDeck(newCard);  // Ejemplo de cómo podrías manejarlo
+
+            // Devuelve o almacena la nueva carta según sea necesario en tu lógica
+        }
+
+
 
         public object VisitActionExpression(Action expr)
         {
