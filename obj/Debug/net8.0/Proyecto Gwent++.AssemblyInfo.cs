@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Proyecto Gwent++")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bce75d0b30955d05c3c2d3a8f349c3b68f9bd1ae")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8880e3c58a76886a466c9f7461c632fcd0a0dc1")]
 [assembly: System.Reflection.AssemblyProductAttribute("Proyecto Gwent++")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Proyecto Gwent++")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

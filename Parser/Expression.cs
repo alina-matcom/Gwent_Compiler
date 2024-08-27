@@ -3,14 +3,8 @@ using System.Collections.Generic;
 
 namespace GwentInterpreters
 {
-    /// <summary>
-    /// Base class for all types of expressions.
-    /// </summary>
     public abstract class Expression
     {
-        /// <summary>
-        /// Interface for the Visitor pattern.
-        /// </summary>
         public interface IVisitor<T>
         {
             T VisitBinaryExpression(BinaryExpression expr);
@@ -26,9 +20,11 @@ namespace GwentInterpreters
             T VisitSetExpression(Set expr);
             T VisitEffectInvocationExpr(EffectInvocation expr);
             T VisitSelectorExpr(Selector expr);
-            T VisitLambdaExpression(LambdaExpression lambda);
-            T VisitActionExpression(Action expr); // Nuevo método para Action
+            T VisitActionExpression(Action expr);
+            T VisitPredicate(Predicate expr);
+            T VisitEffectAction(EffectAction expr); // Nuevo método para EffectAction
         }
+
         public abstract T Accept<T>(IVisitor<T> visitor);
     }
 
@@ -201,7 +197,6 @@ namespace GwentInterpreters
         }
     }
 
-    // Nueva clase para las expresiones de asignación (setter)
     public class Set : Expression
     {
         public Expression Object { get; }
@@ -220,6 +215,7 @@ namespace GwentInterpreters
             return visitor.VisitSetExpression(this);
         }
     }
+
     public class Action : Expression
     {
         public Token TargetParam { get; }
@@ -256,16 +252,13 @@ namespace GwentInterpreters
         }
     }
 
-    /// <summary>
-    /// Nodo que representa un selector.
-    /// </summary>
     public class Selector : Expression
     {
         public string Source { get; }
         public bool Single { get; }
-        public Expression Predicate { get; }
+        public Predicate Predicate { get; }
 
-        public Selector(string source, bool single, Expression predicate)
+        public Selector(string source, bool single, Predicate predicate)
         {
             Source = source;
             Single = single;
@@ -278,12 +271,12 @@ namespace GwentInterpreters
         }
     }
 
-    public class LambdaExpression : Expression
+    public class Predicate : Expression
     {
         public Token Parameter { get; }
         public Expression Body { get; }
 
-        public LambdaExpression(Token parameter, Expression body)
+        public Predicate(Token parameter, Expression body)
         {
             Parameter = parameter;
             Body = body;
@@ -291,8 +284,27 @@ namespace GwentInterpreters
 
         public override T Accept<T>(IVisitor<T> visitor)
         {
-            return visitor.VisitLambdaExpression(this);
+            return visitor.VisitPredicate(this);
         }
     }
 
+    public class EffectAction : Expression
+    {
+        public EffectInvocation Effect { get; }
+        public Selector Selector { get; }
+        public EffectAction PostAction { get; }
+
+        public EffectAction(EffectInvocation effect, Selector selector, EffectAction postAction)
+        {
+            Effect = effect;
+            Selector = selector;
+            PostAction = postAction;
+        }
+
+        public override T Accept<T>(IVisitor<T> visitor)
+        {
+            return visitor.VisitEffectAction(this);
+        }
+    }
 }
+

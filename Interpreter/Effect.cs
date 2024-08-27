@@ -50,4 +50,67 @@ namespace GwentInterpreters
             // No se devuelve ningún valor porque es una función de tipo void
         }
     }
+
+
+    public class EffectInstance
+    {
+        // El nombre del efecto.
+        public string Name { get; }
+
+        // Diccionario que guarda los argumentos del efecto.
+        public Dictionary<string, object> Arguments { get; }
+
+        // La función de acción asociada a esta instancia de efecto.
+        public ActionFunction ActionFunction { get; }
+
+        // Constructor para inicializar una instancia de efecto.
+        public EffectInstance(string name, Dictionary<string, object> arguments, ActionFunction actionFunction)
+        {
+            Name = name;
+            Arguments = arguments;
+            ActionFunction = actionFunction;
+        }
+
+        // Método para ejecutar la acción de este efecto.
+        public void Invoke(Interpreter interpreter, Iterable targets, Context context)
+        {
+            ActionFunction.Call(interpreter, targets, context, Arguments);
+        }
+    }
+
+    public class SelectorResult
+    {
+        public string Source { get; }
+        public bool Single { get; }
+        public Func<Card, bool> Predicate { get; }
+
+        public SelectorResult(string source, bool single, Func<Card, bool> predicate)
+        {
+            Source = source;
+            Single = single;
+            Predicate = predicate;
+        }
+    }
+
+    public class EffectActionResult
+    {
+        // Instancia del efecto.
+        public EffectInstance EffectInstance { get; }
+
+        // Resultado del selector.
+        public SelectorResult SelectorResult { get; }
+
+        // Resultado del post-action.
+        public EffectActionResult PostActionResult { get; }
+
+        // Constructor para inicializar los campos.
+        public EffectActionResult(EffectInstance effectInstance, SelectorResult selectorResult, EffectActionResult postActionResult)
+        {
+            EffectInstance = effectInstance;
+            SelectorResult = selectorResult;
+            PostActionResult = postActionResult;
+        }
+    }
+
+
 }

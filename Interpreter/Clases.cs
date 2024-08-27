@@ -7,24 +7,25 @@ using System.Reflection;
 namespace GwentInterpreters
 {
     public class Card
-    {
-        public string Type { get; }
-        public string Name { get; }
-        public string Faction { get; }
-        public double Power { get; }
-        public List<string> Range { get; }
-        public List<EffectAction> OnActivation { get; }
+{
+    public string Type { get; }
+    public string Name { get; }
+    public string Faction { get; }
+    public double Power { get; }
+    public List<string> Range { get; }
+    public List<EffectActionResult> OnActivation { get; }  // Cambiado de EffectAction a EffectActionResult
 
-        public Card(string type, string name, string faction, double power, List<string> range, List<EffectAction> onActivation)
-        {
-            Type = type;
-            Name = name;
-            Faction = faction;
-            Power = power;
-            Range = range;
-            OnActivation = onActivation;
-        }
+    public Card(string type, string name, string faction, double power, List<string> range, List<EffectActionResult> onActivation)
+    {
+        Type = type;
+        Name = name;
+        Faction = faction;
+        Power = power;
+        Range = range;
+        OnActivation = onActivation;
     }
+}
+
 
     public class Context
     {

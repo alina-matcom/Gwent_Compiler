@@ -147,6 +147,15 @@ namespace GwentInterpreters
             string faction = ParseStringAttribute(TokenType.FACTION, "Faction");
             Expression power = ParseExpressionAttribute(TokenType.POWER, "Power");
             List<string> range = ParseStringListAttribute(TokenType.RANGE, "Range");
+            // Validar los rangos
+            var validRanges = new HashSet<string> { "Melee", "Ranged", "Siege" };
+            foreach (var r in range)
+            {
+                if (!validRanges.Contains(r))
+                {
+                    throw Error(Peek(), $"Rango inválido en la definición de carta: {r}. Debe ser uno de: {string.Join(", ", validRanges)}");
+                }
+            }
 
             // Parseo de la lista de efectos en OnActivation
             Consume(TokenType.ONACTIVATION, "Se esperaba la clave 'OnActivation'.");
@@ -263,6 +272,12 @@ namespace GwentInterpreters
         {
             // Se espera que siempre haya un 'Source'.
             string source = ParseStringAttribute(TokenType.SOURCE, "Source");
+            // Validar el Source
+            var validSources = new HashSet<string> { "hand", "otherHand", "deck", "otherDeck", "field", "otherField", "parent" };
+            if (!validSources.Contains(source))
+            {
+                throw Error(Peek(), $"Source inválido: {source}. Debe ser uno de: {string.Join(", ", validSources)}");
+            }
             Consume(TokenType.COMMA, "Se esperaba ',' después de 'Source'.");
 
             // Verifica si el source es "parent" y si está siendo usado en un PostAction
@@ -278,11 +293,11 @@ namespace GwentInterpreters
             Consume(TokenType.PREDICATE, "Se esperaba la clave 'Predicate'.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Predicate'.");
 
-            Expression predicate = ParsePredicate();
+            Predicate predicate = ParsePredicate();
 
             return new Selector(source, single, predicate);
         }
-        private Expression ParsePredicate()
+        private Predicate ParsePredicate()
         {
             // Parseamos la expresión del predicado como una función lambda
             Consume(TokenType.LEFT_PAREN, "Se esperaba '(' al inicio del predicado.");
@@ -290,7 +305,7 @@ namespace GwentInterpreters
             Consume(TokenType.RIGHT_PAREN, "Se esperaba ')' después del parámetro del predicado.");
             Consume(TokenType.LAMBDA, "Se esperaba '=>' después del parámetro del predicado.");
             var body = Expression();
-            return new LambdaExpression(parameter, body);
+            return new Predicate(parameter, body);
         }
 
         private string ParseStringAttribute(TokenType expectedTokenType, string attributeName)

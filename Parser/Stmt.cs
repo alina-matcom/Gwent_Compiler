@@ -12,7 +12,6 @@ namespace GwentInterpreters
 
             void VisitEffectStmt(EffectStmt stmt);
             void VisitCardStmt(CardStmt stmt);
-            void VisitEffectAction(EffectAction stmt);
         }
 
         public abstract void Accept(IVisitor visitor);
@@ -133,26 +132,8 @@ namespace GwentInterpreters
             Type = type;
         }
     }
-    
 
-    public class EffectAction : Stmt
-    {
-        public EffectInvocation Effect { get; }
-        public Selector Selector { get; }
-        public EffectAction PostAction { get; }
 
-        public EffectAction(EffectInvocation effect, Selector selector, EffectAction postAction)
-        {
-            Effect = effect;
-            Selector = selector;
-            PostAction = postAction;
-        }
-
-        public override void Accept(IVisitor visitor)
-        {
-            visitor.VisitEffectAction(this);
-        }
-    }
 
     public class CardStmt : Stmt
     {

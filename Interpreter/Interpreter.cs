@@ -8,7 +8,9 @@ namespace GwentInterpreters
         internal Environment environment = new Environment();
         // Diccionario para almacenar los efectos definidos
         private Dictionary<string, EffectDefinition> effectDefinitions = new Dictionary<string, EffectDefinition>();
-        public void Interpret(List<Stmt> statements)
+        // Lista para almacenar las cartas
+        private List<Card> cards = new List<Card>();
+        public List<Card> Interpret(List<Stmt> statements)
         {
             try
             {
@@ -21,7 +23,10 @@ namespace GwentInterpreters
             {
                 RuntimeError(error);
             }
+            // Devuelve la lista de cartas procesadas.
+            return cards;
         }
+
 
         private void Execute(Stmt stmt)
         {
@@ -61,17 +66,158 @@ namespace GwentInterpreters
             // Obtener la lista de rangos
             List<string> range = stmt.Range;
 
-            // Obtener la lista de efectos OnActivation
-            List<EffectAction> onActivation = stmt.OnActivation;
+            // Convertir la lista de EffectAction a EffectActionResult
+            List<EffectActionResult> onActivationResults = new List<EffectActionResult>();
+            foreach (var effectAction in stmt.OnActivation)
+            {
+                // Evaluar cada EffectAction y agregar el resultado a la lista
+                var result = (EffectActionResult)VisitEffectAction(effectAction);
+                onActivationResults.Add(result);
+            }
 
-            // Crear una nueva instancia de la carta
-            Card newCard = new Card(type, name, faction, power, range, onActivation);
+            // Crear una nueva instancia de la carta con los resultados evaluados
+            Card newCard = new Card(type, name, faction, power, range, onActivationResults);
 
-            // Aquí puedes agregar lógica adicional para manejar la nueva carta
-            // Por ejemplo, añadirla a un mazo, una mano, o un tablero
-            // environment.AddCardToDeck(newCard);  // Ejemplo de cómo podrías manejarlo
+            // Agregar la carta a la lista de cartas
+            cards.Add(newCard);
 
-            // Devuelve o almacena la nueva carta según sea necesario en tu lógica
+        }
+
+
+
+        public object VisitSelectorExpr(Selector expr)
+        {
+
+            // Evaluar el Predicate
+            var predicateFunction = (Func<Card, bool>)VisitPredicate(expr.Predicate);
+
+            // Crear y devolver la instancia de SelectorResult
+            return new SelectorResult(expr.Source, expr.Single, predicateFunction);
+        }
+
+        public object VisitPredicate(Predicate predicate)
+        {
+            // Devolver una lambda que acepte una Card y devuelva un bool
+            return new Func<Card, bool>(card =>
+            {
+                // Crear un nuevo intérprete temporal
+                Interpreter tempInterpreter = new Interpreter();
+
+                // Crear un entorno temporal basado en el entorno actual
+                Environment tempEnv = new Environment(this.environment);
+
+                // Definir la variable del parámetro (que es la carta) en el nuevo entorno
+                tempEnv.Define(predicate.Parameter.Lexeme, card);
+
+                // Establecer el entorno temporal en el intérprete temporal
+                tempInterpreter.environment = tempEnv;
+
+                // Evaluar el cuerpo del predicado en el intérprete temporal
+                var result = tempInterpreter.Evaluate(predicate.Body) as bool?;
+
+                // Si el resultado no es booleano, lanzar un error
+                if (result == null)
+                {
+                    throw new RuntimeError(null, "El predicado no evaluó a un valor booleano.");
+                }
+
+                // Devolver el resultado booleano
+                return result.Value;
+            });
+        }
+
+
+
+        public object VisitEffectInvocationExpr(EffectInvocation expr)
+        {
+            // 1. Verificar si el efecto está definido en el diccionario.
+            if (!effectDefinitions.ContainsKey(expr.Name))
+            {
+                throw new RuntimeError(null,
+                    $"El efecto '{expr.Name}' no está definido.");
+            }
+
+            // 2. Obtener la definición del efecto.
+            var effectDef = effectDefinitions[expr.Name];
+
+            // 3. Evaluar las expresiones en los parámetros y almacenarlas en un nuevo diccionario.
+            var evaluatedParams = new Dictionary<string, object>();
+            foreach (var param in expr.Parameters)
+            {
+                evaluatedParams[param.Key] = Evaluate(param.Value);
+            }
+
+            // 4. Verificar que la cantidad de parámetros coincida con la definición.
+            if (effectDef.Parameters.Count != evaluatedParams.Count)
+            {
+                throw new RuntimeError(null,
+                    $"Error de aridad en el efecto '{expr.Name}': se esperaban {effectDef.Parameters.Count} parámetros, pero se recibieron {evaluatedParams.Count}.");
+            }
+
+            // 5. Verificar que los tipos coincidan.
+            foreach (var parameter in effectDef.Parameters)
+            {
+                if (!evaluatedParams.ContainsKey(parameter.Name.Lexeme))
+                {
+                    throw new RuntimeError(null,
+                        $"El parámetro '{parameter.Name.Lexeme}' no fue proporcionado en la invocación del efecto '{expr.Name}'.");
+                }
+
+                var value = evaluatedParams[parameter.Name.Lexeme];
+
+                // Verificación del tipo basado en el tipo especificado en `parameter.Type`.
+                switch (parameter.Type.Type)
+                {
+                    case TokenType.NUMBER_SPECIFIER:
+                        if (!(value is double))
+                        {
+                            throw new RuntimeError(null,
+                                $"El parámetro '{parameter.Name.Lexeme}' en el efecto '{expr.Name}' debería ser de tipo 'number', pero se recibió '{value.GetType()}'.");
+                        }
+                        break;
+
+                    case TokenType.STRING_SPECIFIER:
+                        if (!(value is string))
+                        {
+                            throw new RuntimeError(null,
+                                $"El parámetro '{parameter.Name.Lexeme}' en el efecto '{expr.Name}' debería ser de tipo 'string', pero se recibió '{value.GetType()}'.");
+                        }
+                        break;
+
+                    case TokenType.BOOLEAN_SPECIFIER:
+                        if (!(value is bool))
+                        {
+                            throw new RuntimeError(null,
+                                $"El parámetro '{parameter.Name.Lexeme}' en el efecto '{expr.Name}' debería ser de tipo 'boolean', pero se recibió '{value.GetType()}'.");
+                        }
+                        break;
+
+                    default:
+                        throw new RuntimeError(null,
+                            $"Tipo de parámetro desconocido '{parameter.Type.Type}' en la definición del efecto '{expr.Name}'.");
+                }
+            }
+
+            // 6. Crear y devolver una nueva instancia de EffectInstance.
+            return new EffectInstance(expr.Name, evaluatedParams, effectDef.ActionFunction);
+        }
+        public object VisitEffectAction(EffectAction effectAction)
+        {
+            // Evaluar el EffectInvocation y obtener el resultado.
+            var effectInstance = (EffectInstance)VisitEffectInvocationExpr(effectAction.Effect);
+
+            // Evaluar el SelectorExpr y obtener el resultado.
+            var selectorResult = (SelectorResult)VisitSelectorExpr(effectAction.Selector);
+
+            // Evaluar el PostAction recursivamente, si existe.
+            EffectActionResult postActionResult = null;
+            if (effectAction.PostAction != null)
+            {
+                postActionResult = (EffectActionResult)VisitEffectAction(effectAction.PostAction);
+            }
+
+            // Crear y devolver una instancia de EffectActionResult.
+            return new EffectActionResult(effectInstance, selectorResult, postActionResult);
         }
 
 
