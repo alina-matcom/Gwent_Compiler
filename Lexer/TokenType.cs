@@ -3,7 +3,8 @@ namespace GwentInterpreters
     public enum TokenType
     {
         // Palabras clave
-        EFFECT,
+        EFFECT_DECLARATION, // Para "effect"
+        EFFECT_CALL,
         CARD,
         NAME,
         PARAMS,

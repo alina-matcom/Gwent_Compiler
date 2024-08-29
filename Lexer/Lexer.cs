@@ -13,13 +13,9 @@ namespace GwentInterpreters
         public static bool HadError { get; private set; } = false; // Variable para manejar errores
         private static readonly Dictionary<string, TokenType> keywords = new Dictionary<string, TokenType>()
         {
-            { "effect", TokenType.EFFECT },
+            { "effect", TokenType.EFFECT_DECLARATION },
+            { "Effect", TokenType.EFFECT_CALL },
             { "card", TokenType.CARD },
-            { "Name", TokenType.NAME },
-            { "Type", TokenType.TYPE },
-            { "Faction", TokenType.FACTION },
-            { "Power", TokenType.POWER },
-            { "Range", TokenType.RANGE },
             { "OnActivation", TokenType.ONACTIVATION },
             { "Params", TokenType.PARAMS },
             { "Action", TokenType.ACTION },
@@ -34,23 +30,10 @@ namespace GwentInterpreters
             { "for", TokenType.FOR },
             { "in", TokenType.IN },
             { "while", TokenType.WHILE },
-            { "true", TokenType.TRUE },
-            { "false", TokenType.FALSE },
+            { "true", TokenType.BOOLEAN },
+            { "false", TokenType.BOOLEAN },
             { "if", TokenType.IF },
             { "else", TokenType.ELSE },
-            { "triggerPlayer", TokenType.TRIGGERPLAYER },
-            { "board", TokenType.BOARD },
-            { "handOfPlayer", TokenType.HANDOFPLAYER },
-            { "fieldOfPlayer", TokenType.FIELD_OF_PLAYER },
-            { "graveyardOfPlayer", TokenType.GRAVEYARD_OF_PLAYER },
-            { "deckOfPlayer", TokenType.DECK_OF_PLAYER },
-            { "owner", TokenType.OWNER },
-            { "find", TokenType.FIND },
-            { "push", TokenType.PUSH },
-            { "sendBottom", TokenType.SENDBOTTOM },
-            { "pop", TokenType.POP },
-            { "remove", TokenType.REMOVE },
-            { "shuffle", TokenType.SHUFFLE },
             { "and", TokenType.AND },
             { "or", TokenType.OR },
             { "not", TokenType.NOT }
@@ -235,39 +218,40 @@ namespace GwentInterpreters
         {
             return IsAlpha(c) || IsDigit(c);
         }
-      private void Number()
-{
-    bool hasDecimal = false;
-
-    while (IsDigit(Peek()) || (Peek() == '.' && !hasDecimal && IsDigit(PeekNext())))
-    {
-        if (Peek() == '.')
+        private void Number()
         {
-            hasDecimal = true;
-        }
-        Advance();
-    }
+            bool hasDecimal = false;
 
-    // Si encontramos un segundo punto decimal o terminamos en un punto sin un número después
-    if (Peek() == '.' || (hasDecimal && !IsDigit(PeekNext())))
-    {
-        // Consumir el resto de la secuencia hasta que se encuentre un delimitador
-        while (IsDigit(Peek()) || Peek() == '.')
-        {
-            Advance();
-        }
+            while (IsDigit(Peek()) || (Peek() == '.' && !hasDecimal && IsDigit(PeekNext())))
+            {
+                if (Peek() == '.')
+                {
+                    hasDecimal = true;
+                }
+                Advance();
+            }
 
-        string invalidNumber = source.Substring(start, current - start);
-        Error(line, $"Número mal formado: {invalidNumber}");
-    }
-    else
-    {
-        // Convertimos el lexema a double.
-        string numberStr = source.Substring(start, current - start);
-        double number = double.Parse(numberStr);
-        AddToken(TokenType.NUMBER, number);
-    }
-}        private bool IsDigit(char c)
+            // Si encontramos un segundo punto decimal o terminamos en un punto sin un número después
+            if (Peek() == '.' || (hasDecimal && !IsDigit(PeekNext())))
+            {
+                // Consumir el resto de la secuencia hasta que se encuentre un delimitador
+                while (IsDigit(Peek()) || Peek() == '.')
+                {
+                    Advance();
+                }
+
+                string invalidNumber = source.Substring(start, current - start);
+                Error(line, $"Número mal formado: {invalidNumber}");
+            }
+            else
+            {
+                // Convertimos el lexema a double.
+                string numberStr = source.Substring(start, current - start);
+                double number = double.Parse(numberStr);
+                AddToken(TokenType.NUMBER, number);
+            }
+        }
+        private bool IsDigit(char c)
         {
             return c >= '0' && c <= '9';
         }

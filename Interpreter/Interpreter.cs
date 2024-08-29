@@ -30,12 +30,14 @@ namespace GwentInterpreters
 
         private void Execute(Stmt stmt)
         {
+            Console.WriteLine($"Executing statement: {stmt}");
             stmt.Accept(this);
         }
 
         // Implementación de la visita al nodo EffectStmt
         public void VisitEffectStmt(EffectStmt stmt)
         {
+            Console.WriteLine($"Visiting EffectStmt: {stmt.Name}");
             // Obtener la lista de parámetros del EffectStmt
             List<Parameter> parameters = stmt.Params;
 
@@ -56,6 +58,7 @@ namespace GwentInterpreters
 
         public void VisitCardStmt(CardStmt stmt)
         {
+            Console.WriteLine($"Visiting CardStmt: {stmt.Name}");
             // Extraer y evaluar los atributos de la carta
             string type = stmt.Type;
             string name = stmt.Name;
@@ -87,7 +90,7 @@ namespace GwentInterpreters
 
         public object VisitSelectorExpr(Selector expr)
         {
-
+            Console.WriteLine($"Visiting SelectorExpr: {expr}");
             // Evaluar el Predicate
             var predicateFunction = (Func<Card, bool>)VisitPredicate(expr.Predicate);
 
@@ -97,6 +100,7 @@ namespace GwentInterpreters
 
         public object VisitPredicate(Predicate predicate)
         {
+            Console.WriteLine($"Visiting Predicate: {predicate}");
             // Devolver una lambda que acepte una Card y devuelva un bool
             return new Func<Card, bool>(card =>
             {
@@ -130,11 +134,11 @@ namespace GwentInterpreters
 
         public object VisitEffectInvocationExpr(EffectInvocation expr)
         {
+            Console.WriteLine($"Visiting EffectInvocationExpr: {expr.Name}");
             // 1. Verificar si el efecto está definido en el diccionario.
             if (!effectDefinitions.ContainsKey(expr.Name))
             {
-                throw new RuntimeError(null,
-                    $"El efecto '{expr.Name}' no está definido.");
+                throw new RuntimeError(null, $"El efecto '{expr.Name}' no está definido.");
             }
 
             // 2. Obtener la definición del efecto.
@@ -203,6 +207,7 @@ namespace GwentInterpreters
         }
         public object VisitEffectAction(EffectAction effectAction)
         {
+            Console.WriteLine($"Visiting EffectAction: {effectAction}");
             // Evaluar el EffectInvocation y obtener el resultado.
             var effectInstance = (EffectInstance)VisitEffectInvocationExpr(effectAction.Effect);
 
@@ -224,6 +229,7 @@ namespace GwentInterpreters
 
         public object VisitActionExpression(Action expr)
         {
+            Console.WriteLine($"Visiting ActionExpression: {expr}");
             // Crear una nueva instancia de ActionFunction usando la declaración de acción.
             return new ActionFunction(expr);
         }
@@ -231,6 +237,7 @@ namespace GwentInterpreters
 
         public void VisitIfStmt(If stmt)
         {
+            Console.WriteLine($"Visiting IfStmt: {stmt}");
             if (IsTruthy(Evaluate(stmt.condition)))
             {
                 Execute(stmt.thenBranch);
@@ -243,6 +250,7 @@ namespace GwentInterpreters
         // Método para visitar y ejecutar un bloque de sentencias
         public void VisitBlockStmt(Block stmt)
         {
+            Console.WriteLine($"Visiting BlockStmt");
             // Se crea un nuevo entorno para el bloque, basado en el entorno actual
             ExecuteBlock(stmt.statements, new Environment(environment));
         }
@@ -272,6 +280,7 @@ namespace GwentInterpreters
 
         public void VisitForStmt(For stmt)
         {
+            Console.WriteLine($"Visiting ForStmt: {stmt}");
             // Evalúa la expresión iterable y asegúrate de que es una colección.
             object iterable = environment.Get(stmt.Iterable);
 
@@ -299,6 +308,7 @@ namespace GwentInterpreters
 
         public void VisitWhileStmt(While stmt)
         {
+            Console.WriteLine($"Visiting WhileStmt: {stmt}");
             while (IsTruthy(Evaluate(stmt.Condition)))
             {
                 Execute(stmt.Body);
@@ -306,6 +316,7 @@ namespace GwentInterpreters
         }
         public object VisitCallExpression(Call expr)
         {
+            Console.WriteLine($"Visiting CallExpression: {expr}");
             // Evaluar el objeto que contiene el método
             object callee = Evaluate(expr.Callee);
 
@@ -335,6 +346,7 @@ namespace GwentInterpreters
 
         public object VisitGetExpression(Get expr)
         {
+            Console.WriteLine($"Visiting GetExpression: {expr}");
             object obj = Evaluate(expr.Object);
 
             // Verificar si es una instancia de Card, Context o Iterable
@@ -380,6 +392,8 @@ namespace GwentInterpreters
 
         public object VisitSetExpression(Set expr)
         {
+
+            Console.WriteLine($"Visiting SetExpression: {expr}");
             object obj = Evaluate(expr.Object);
             if (!(obj is Card) && !(obj is Context))
             {
@@ -401,10 +415,12 @@ namespace GwentInterpreters
         }
         public object VisitVariableExpr(Variable expr)
         {
+            Console.WriteLine($"Visiting VariableExpr: {expr}");
             return environment.Get(expr.name);
         }
         public void VisitExprStmt(Expr stmt)
         {
+            Console.WriteLine($"Visiting ExprStmt: {stmt}");
             Evaluate(stmt.expression);
             return;
         }
@@ -412,6 +428,7 @@ namespace GwentInterpreters
 
         public object VisitLogicalExpression(LogicalExpression expr)
         {
+            Console.WriteLine($"Visiting LogicalExpression: {expr}");
             object left = Evaluate(expr.Left);
             if (expr.Operator.Type == TokenType.OR)
             {
@@ -427,27 +444,32 @@ namespace GwentInterpreters
         // Método auxiliar para evaluar expresiones
         private object Evaluate(Expression expr)
         {
+            Console.WriteLine($"Evaluating expression: {expr}");
             return expr.Accept(this);
         }
 
         public object VisitAssignExpression(AssignExpression expr)
         {
+            Console.WriteLine($"Visiting AssignExpression: {expr}");
             object value = Evaluate(expr.Value);
             environment.Assign(expr.Name, value);
             return value;
         }
         public object VisitLiteralExpression(LiteralExpression expr)
         {
+            Console.WriteLine($"Visiting LiteralExpression: {expr}");
             return expr.Value;
         }
 
         public object VisitGroupingExpression(GroupingExpression expr)
         {
+            Console.WriteLine($"Visiting GroupingExpression: {expr}");
             return Evaluate(expr.Expression);
         }
 
         public object VisitUnaryExpression(UnaryExpression expr)
         {
+            Console.WriteLine($"Visiting UnaryExpression: {expr}");
             object right = Evaluate(expr.Right);
             switch (expr.Operator.Type)
             {
@@ -467,6 +489,7 @@ namespace GwentInterpreters
 
         public object VisitPostfixExpression(PostfixExpression expr)
         {
+            Console.WriteLine($"Visiting PostfixExpression: {expr}");
             switch (expr.Operator.Type)
             {
                 case TokenType.INCREMENT: // Ajustado para usar INCREMENT
@@ -479,6 +502,7 @@ namespace GwentInterpreters
         }
         private object Increment(Token _operator, Expression expr, bool isPrefix)
         {
+            Console.WriteLine($"Incrementing: {expr}");
             if (expr is Variable variableExpr)
             {
                 object value = environment.Get(variableExpr.name);
@@ -492,6 +516,8 @@ namespace GwentInterpreters
 
         private object Decrement(Token _operator, Expression expr, bool isPrefix)
         {
+
+            Console.WriteLine($"Decrementing: {expr}");
             if (expr is Variable variableExpr)
             {
                 object value = environment.Get(variableExpr.name);
@@ -504,6 +530,7 @@ namespace GwentInterpreters
         }
         public object VisitBinaryExpression(BinaryExpression expr)
         {
+            Console.WriteLine($"Visiting BinaryExpression: {expr}");
             object left = Evaluate(expr.Left);
             object right = Evaluate(expr.Right);
             switch (expr.Operator.Type)

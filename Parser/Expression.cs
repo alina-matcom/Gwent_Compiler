@@ -22,10 +22,11 @@ namespace GwentInterpreters
             T VisitSelectorExpr(Selector expr);
             T VisitActionExpression(Action expr);
             T VisitPredicate(Predicate expr);
-            T VisitEffectAction(EffectAction expr); // Nuevo método para EffectAction
+            T VisitEffectAction(EffectAction expr);
         }
 
         public abstract T Accept<T>(IVisitor<T> visitor);
+        public abstract override string ToString();
     }
 
     public class AssignExpression : Expression
@@ -42,6 +43,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitAssignExpression(this);
+        }
+
+        public override string ToString()
+        {
+            return $"{Name.Lexeme} = {Value}";
         }
     }
 
@@ -62,6 +68,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitBinaryExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"({Left} {Operator.Lexeme} {Right})";
+        }
     }
 
     public class UnaryExpression : Expression
@@ -79,6 +90,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitUnaryExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"({Operator.Lexeme} {Right})";
+        }
     }
 
     public class LiteralExpression : Expression
@@ -93,6 +109,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitLiteralExpression(this);
+        }
+
+        public override string ToString()
+        {
+            return Value.ToString();
         }
     }
 
@@ -109,6 +130,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitGroupingExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"({Expression})";
+        }
     }
 
     public class Variable : Expression
@@ -122,6 +148,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitVariableExpr(this);
+        }
+
+        public override string ToString()
+        {
+            return name.Lexeme;
         }
     }
 
@@ -142,6 +173,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitLogicalExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"({Left} {Operator.Lexeme} {Right})";
+        }
     }
 
     public class PostfixExpression : Expression
@@ -158,6 +194,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitPostfixExpression(this);
+        }
+
+        public override string ToString()
+        {
+            return $"({Left}{Operator.Lexeme})";
         }
     }
 
@@ -178,6 +219,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitCallExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"{Callee}({string.Join(", ", Arguments)})";
+        }
     }
 
     public class Get : Expression
@@ -194,6 +240,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitGetExpression(this);
+        }
+
+        public override string ToString()
+        {
+            return $"{Object}.{Name.Lexeme}";
         }
     }
 
@@ -214,6 +265,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitSetExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"{Object}.{Name.Lexeme} = {Value}";
+        }
     }
 
     public class Action : Expression
@@ -233,6 +289,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitActionExpression(this);
         }
+
+        public override string ToString()
+        {
+            return $"({TargetParam.Lexeme}, {ContextParam.Lexeme}) => {{ {string.Join("; ", Body)} }}";
+        }
     }
 
     public class EffectInvocation : Expression
@@ -249,6 +310,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitEffectInvocationExpr(this);
+        }
+
+        public override string ToString()
+        {
+            return $"Effect: {Name}({string.Join(", ", Parameters)})";
         }
     }
 
@@ -269,6 +335,11 @@ namespace GwentInterpreters
         {
             return visitor.VisitSelectorExpr(this);
         }
+
+        public override string ToString()
+        {
+            return $"Selector: {{ Source: {Source}, Single: {Single}, Predicate: {Predicate} }}";
+        }
     }
 
     public class Predicate : Expression
@@ -285,6 +356,11 @@ namespace GwentInterpreters
         public override T Accept<T>(IVisitor<T> visitor)
         {
             return visitor.VisitPredicate(this);
+        }
+
+        public override string ToString()
+        {
+            return $"({Parameter.Lexeme}) => {Body}";
         }
     }
 
@@ -305,6 +381,10 @@ namespace GwentInterpreters
         {
             return visitor.VisitEffectAction(this);
         }
+
+        public override string ToString()
+        {
+            return $"EffectAction: {{ Effect: {Effect}, Selector: {Selector}, PostAction: {PostAction} }}";
+        }
     }
 }
-

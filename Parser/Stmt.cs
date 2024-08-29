@@ -8,13 +8,13 @@ namespace GwentInterpreters
             void VisitBlockStmt(Block stmt);
             void VisitIfStmt(If stmt);
             void VisitWhileStmt(While stmt);
-            void VisitForStmt(For stmt); // Añadido para la clase For
-
+            void VisitForStmt(For stmt);
             void VisitEffectStmt(EffectStmt stmt);
             void VisitCardStmt(CardStmt stmt);
         }
 
         public abstract void Accept(IVisitor visitor);
+        public abstract override string ToString();
     }
 
     public class Expr : Stmt
@@ -30,6 +30,11 @@ namespace GwentInterpreters
         {
             visitor.VisitExprStmt(this);
         }
+
+        public override string ToString()
+        {
+            return $"Expr({expression})";
+        }
     }
 
     public class Block : Stmt
@@ -44,6 +49,11 @@ namespace GwentInterpreters
         public override void Accept(IVisitor visitor)
         {
             visitor.VisitBlockStmt(this);
+        }
+
+        public override string ToString()
+        {
+            return $"Block({string.Join(", ", statements)})";
         }
     }
 
@@ -64,6 +74,11 @@ namespace GwentInterpreters
         {
             visitor.VisitIfStmt(this);
         }
+
+        public override string ToString()
+        {
+            return $"If({condition}, {thenBranch}, {elseBranch})";
+        }
     }
 
     public class While : Stmt
@@ -80,6 +95,11 @@ namespace GwentInterpreters
         public override void Accept(IVisitor visitor)
         {
             visitor.VisitWhileStmt(this);
+        }
+
+        public override string ToString()
+        {
+            return $"While({Condition}, {Body})";
         }
     }
 
@@ -100,6 +120,11 @@ namespace GwentInterpreters
         {
             visitor.VisitForStmt(this);
         }
+
+        public override string ToString()
+        {
+            return $"For({Iterator}, {Iterable}, {string.Join(", ", Body)})";
+        }
     }
 
     public class EffectStmt : Stmt
@@ -119,6 +144,12 @@ namespace GwentInterpreters
         {
             visitor.VisitEffectStmt(this);
         }
+
+        public override string ToString()
+        {
+            string parameters = Params != null ? string.Join(", ", Params) : "null";
+            return $"EffectStmt(Name: {Name}, Params: {parameters}, Action: {Action})";
+        }
     }
 
     public class Parameter
@@ -131,9 +162,12 @@ namespace GwentInterpreters
             Name = name;
             Type = type;
         }
+
+        public override string ToString()
+        {
+            return $"{Name.Lexeme}: {Type.Lexeme}";
+        }
     }
-
-
 
     public class CardStmt : Stmt
     {
@@ -157,6 +191,11 @@ namespace GwentInterpreters
         public override void Accept(IVisitor visitor)
         {
             visitor.VisitCardStmt(this);
+        }
+
+        public override string ToString()
+        {
+            return $"CardStmt(Type: {Type}, Name: {Name}, Faction: {Faction}, Power: {Power}, Range: {string.Join(", ", Range)}, OnActivation: {string.Join(", ", OnActivation)})";
         }
     }
 }

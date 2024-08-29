@@ -29,7 +29,7 @@ namespace GwentInterpreters
         {
             try
             {
-                if (Match(TokenType.EFFECT)) return EffectDeclaration();
+                if (Match(TokenType.EFFECT_DECLARATION)) return EffectDeclaration();
                 if (Match(TokenType.CARD)) return CardDeclaration();
 
 
@@ -43,16 +43,13 @@ namespace GwentInterpreters
         }
         private Stmt EffectDeclaration()
         {
+            Console.WriteLine("Inicio de la declaración de efecto"); // Log
             // Consumimos la apertura del bloque '{'
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'effect'.");
 
             // Parseo del nombre del efecto
-            Consume(TokenType.NAME, "Se esperaba la clave 'Name' dentro del efecto.");
-            Consume(TokenType.COLON, "Se esperaba ':' después de 'Name'.");
-            string name = Consume(TokenType.STRING, "Se esperaba un nombre de efecto.").Lexeme;
-
-            // Consumimos la coma después del nombre
-            Consume(TokenType.COMMA, "Se esperaba ',' después del nombre del efecto.");
+            string name = ParseStringAttribute(TokenType.IDENTIFIER, "Name");
+            Console.WriteLine($"Nombre del efecto: {name}"); // Log
 
             // Inicialización de la lista de parámetros (opcional)
             List<Parameter> parameters = null;
@@ -62,7 +59,7 @@ namespace GwentInterpreters
             {
                 Consume(TokenType.COLON, "Se esperaba ':' después de 'Params'.");
                 parameters = ParseParams();
-
+                Console.WriteLine($"Parámetros del efecto: {string.Join(", ", parameters)}"); // Log
                 // Consumimos la coma después de los parámetros
                 Consume(TokenType.COMMA, "Se esperaba ',' después del bloque de parámetros.");
             }
@@ -71,10 +68,11 @@ namespace GwentInterpreters
             Consume(TokenType.ACTION, "Se esperaba la clave 'Action' dentro del efecto.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Action'.");
             Action action = ParseAction();
+            Console.WriteLine($"Acción del efecto: {action}"); // Log
 
             // Consumimos la clausura del bloque '}'
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de efecto.");
-
+            Console.WriteLine("Fin de la declaración de efecto"); // Log
             // Retornamos un nodo de declaración de efecto con todos los campos necesarios
             return new EffectStmt(name, parameters, action);
         }
@@ -136,17 +134,31 @@ namespace GwentInterpreters
             return new Action(targetParam, contextParam, body);
         }
 
+        // Función de logging
+        private void Log(string message)
+        {
+            Console.WriteLine($"[LOG] {message}");
+        }
 
         private Stmt CardDeclaration()
         {
+            Log("Iniciando el parseo de una declaración de carta.");
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de 'card'.");
 
             // Parseo de los atributos de la carta
-            string type = ParseStringAttribute(TokenType.TYPE, "Type");
-            string name = ParseStringAttribute(TokenType.NAME, "Name");
-            string faction = ParseStringAttribute(TokenType.FACTION, "Faction");
-            Expression power = ParseExpressionAttribute(TokenType.POWER, "Power");
-            List<string> range = ParseStringListAttribute(TokenType.RANGE, "Range");
+            string type = ParseStringAttribute(TokenType.IDENTIFIER, "Type");
+            Log($"Tipo de carta: {type}");
+            string name = ParseStringAttribute(TokenType.IDENTIFIER, "Name");
+            Log($"Nombre de carta: {name}");
+            string faction = ParseStringAttribute(TokenType.IDENTIFIER, "Faction");
+            Log($"Facción de carta: {faction}");
+            Expression power = ParseExpressionAttribute(TokenType.IDENTIFIER, "Power");
+            Log($"Poder de carta: {power}");
+            Consume(TokenType.COMMA, "Se esperaba ',' después del valor de 'Power'.");
+            List<string> range = ParseStringListAttribute(TokenType.IDENTIFIER, "Range");
+            Log($"Rango de carta: {string.Join(", ", range)}");
+            Consume(TokenType.COMMA, "Se esperaba ',' después del valor de 'Range'.");
+
             // Validar los rangos
             var validRanges = new HashSet<string> { "Melee", "Ranged", "Siege" };
             foreach (var r in range)
@@ -161,9 +173,11 @@ namespace GwentInterpreters
             Consume(TokenType.ONACTIVATION, "Se esperaba la clave 'OnActivation'.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'OnActivation'.");
             List<EffectAction> onActivation = ParseEffects();
+            Log($"Efectos de OnActivation: {onActivation.Count} efectos parseados.");
 
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de carta.");
 
+            Log("Finalizando el parseo de una declaración de carta.");
             return new CardStmt(type, name, faction, power, range, onActivation);
         }
 
@@ -182,30 +196,36 @@ namespace GwentInterpreters
             }
             Consume(TokenType.RIGHT_BRACKET, "Se esperaba ']' al final de la lista de efectos.");
 
+            Log($"Parseados {effects.Count} efectos.");
             return effects;
         }
 
 
         private EffectAction ParseEffect(Selector parentSelector = null, bool isPostAction = false)
         {
+            Log("Iniciando el parseo de un efecto.");
             Consume(TokenType.LEFT_BRACE, "Se esperaba '{' al comienzo de un efecto.");
 
             // Parseo de la invocación del efecto.
-            Consume(TokenType.EFFECT, "Se esperaba la clave 'Effect'.");
+            Consume(TokenType.EFFECT_CALL, "Se esperaba la clave 'Effect'.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Effect'.");
             EffectInvocation effect = ParseEffectInvocation();
+            Log($"Efecto invocado: {effect.Name}");
 
             // Parseo del selector.
             Selector selector = null;
             if (Match(TokenType.SELECTOR))
             {
                 Consume(TokenType.COLON, "Se esperaba ':' después de 'Selector'.");
+                Consume(TokenType.LEFT_BRACE, "Se esperaba '{' después de ':' en 'Selector'.");
                 selector = ParseSelector(isPostAction);
+                Log($"Selector parseado: {selector.Source}");
             }
             else if (parentSelector != null)
             {
                 // Usar el selector del efecto padre si no se especifica uno en el PostAction.
                 selector = parentSelector;
+                Log("Usando el selector del efecto padre.");
             }
             else
             {
@@ -218,16 +238,17 @@ namespace GwentInterpreters
             {
                 Consume(TokenType.COLON, "Se esperaba ':' después de 'PostAction'.");
                 postAction = ParseEffect(selector, true); // Aquí pasamos true indicando que es un PostAction
+                Log("PostAction parseado.");
             }
 
             Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración de efecto.");
 
+            Log("Finalizando el parseo de un efecto.");
             return new EffectAction(effect, selector, postAction);
         }
-
-
         private EffectInvocation ParseEffectInvocation()
         {
+            Log("Iniciando el parseo de una invocación de efecto.");
             string name;
             Dictionary<string, Expression> parameters = new Dictionary<string, Expression>();
 
@@ -235,15 +256,14 @@ namespace GwentInterpreters
             {
                 // Cuando el nombre del efecto está dado directamente como una cadena
                 name = Consume(TokenType.STRING, "Se esperaba el nombre del efecto como cadena.").Lexeme;
+                Log($"Nombre del efecto: {name}");
             }
             else
             {
                 // Cuando el nombre del efecto y los parámetros están entre llaves
                 Consume(TokenType.LEFT_BRACE, "Se esperaba '{' en la declaración del efecto.");
-                name = ParseStringAttribute(TokenType.NAME, "Name");
-
-                // Esperar una coma después del nombre del efecto
-                Consume(TokenType.COMMA, "Se esperaba ',' después del nombre del efecto.");
+                name = ParseStringAttribute(TokenType.IDENTIFIER, "Name");
+                Log($"Nombre del efecto: {name}");
 
                 while (!Check(TokenType.RIGHT_BRACE) && !IsAtEnd())
                 {
@@ -254,6 +274,7 @@ namespace GwentInterpreters
                     // Aquí se debe parsear el valor del parámetro
                     Expression paramValue = Expression(); // Suponiendo que 'Expression()' maneja la expresión del valor del parámetro
                     parameters[paramName] = paramValue;
+                    Log($"Parámetro: {paramName} = {paramValue}");
 
                     // Consumir ',' si no es el final del bloque de parámetros
                     if (!Check(TokenType.RIGHT_BRACE))
@@ -263,22 +284,26 @@ namespace GwentInterpreters
                 }
 
                 Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' al final de la declaración del efecto.");
+                Consume(TokenType.COMMA, "Se esperaba ',' después de '}' en la invocación del efecto.");
             }
 
+            Log("Finalizando el parseo de una invocación de efecto.");
             return new EffectInvocation(name, parameters);
         }
 
         private Selector ParseSelector(bool isPostAction)
         {
+            Log("Iniciando el parseo de un selector.");
             // Se espera que siempre haya un 'Source'.
-            string source = ParseStringAttribute(TokenType.SOURCE, "Source");
+            string source = ParseStringAttributeNew(TokenType.SOURCE, "Source");
+            Log($"Source del selector: {source}");
+
             // Validar el Source
-            var validSources = new HashSet<string> { "hand", "otherHand", "deck", "otherDeck", "field", "otherField", "parent" };
+            var validSources = new HashSet<string> { "hand", "otherHand", "deck", "otherDeck", "field", "otherField", "parent", "board" };
             if (!validSources.Contains(source))
             {
                 throw Error(Peek(), $"Source inválido: {source}. Debe ser uno de: {string.Join(", ", validSources)}");
             }
-            Consume(TokenType.COMMA, "Se esperaba ',' después de 'Source'.");
 
             // Verifica si el source es "parent" y si está siendo usado en un PostAction
             if (source == "parent" && !isPostAction)
@@ -287,44 +312,74 @@ namespace GwentInterpreters
             }
 
             Consume(TokenType.SINGLE, "Se esperaba la clave 'Single'.");
+            Consume(TokenType.COLON, "Se esperaba ':' después de 'Single'.");
             bool single = Consume(TokenType.BOOLEAN, "Se esperaba un valor booleano para 'Single'.").Literal.Equals(true);
+            Log($"Single del selector: {single}");
             Consume(TokenType.COMMA, "Se esperaba ',' después de 'Single'.");
 
             Consume(TokenType.PREDICATE, "Se esperaba la clave 'Predicate'.");
             Consume(TokenType.COLON, "Se esperaba ':' después de 'Predicate'.");
 
             Predicate predicate = ParsePredicate();
+            Consume(TokenType.RIGHT_BRACE, "Se esperaba '}' después de 'Predicate'.");
+            Consume(TokenType.COMMA, "Se esperaba ',' después de '}'.");
+            Log("Finalizando el parseo de un selector.");
 
             return new Selector(source, single, predicate);
         }
+
         private Predicate ParsePredicate()
         {
+            Log("Iniciando el parseo de un predicado.");
             // Parseamos la expresión del predicado como una función lambda
             Consume(TokenType.LEFT_PAREN, "Se esperaba '(' al inicio del predicado.");
             var parameter = Consume(TokenType.IDENTIFIER, "Se esperaba un parámetro para el predicado.");
+            Log($"Parámetro del predicado: {parameter.Lexeme}");
             Consume(TokenType.RIGHT_PAREN, "Se esperaba ')' después del parámetro del predicado.");
             Consume(TokenType.LAMBDA, "Se esperaba '=>' después del parámetro del predicado.");
             var body = Expression();
+            Log("Finalizando el parseo de un predicado.");
+
             return new Predicate(parameter, body);
         }
 
         private string ParseStringAttribute(TokenType expectedTokenType, string attributeName)
         {
+            Token identifierToken = Consume(TokenType.IDENTIFIER, $"Se esperaba la clave '{attributeName}'.");
+            if (identifierToken.Lexeme != attributeName)
+            {
+                throw Error(identifierToken, $"Se esperaba la clave '{attributeName}', pero se encontró '{identifierToken.Lexeme}'.");
+            }
+            Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
+            Token stringToken = Consume(TokenType.STRING, $"Se esperaba un valor de cadena para '{attributeName}'.");
+            Consume(TokenType.COMMA, $"Se esperaba ',' después del valor de cadena para '{attributeName}'.");
+            return stringToken.Lexeme;
+        }
+
+        private string ParseStringAttributeNew(TokenType expectedTokenType, string attributeName)
+        {
             Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
             Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
-            return Consume(TokenType.STRING, $"Se esperaba un valor de cadena para '{attributeName}'.").Lexeme;
+            Token stringToken = Consume(TokenType.STRING, $"Se esperaba un valor de cadena para '{attributeName}'.");
+            Consume(TokenType.COMMA, $"Se esperaba ',' después del valor de cadena para '{attributeName}'.");
+            return (string)stringToken.Literal; // Usar el valor literal en lugar del lexema
         }
 
         private List<string> ParseStringListAttribute(TokenType expectedTokenType, string attributeName)
         {
-            Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
+            Token identifierToken = Consume(TokenType.IDENTIFIER, $"Se esperaba la clave '{attributeName}'.");
+            if (identifierToken.Lexeme != attributeName)
+            {
+                throw Error(identifierToken, $"Se esperaba la clave '{attributeName}', pero se encontró '{identifierToken.Lexeme}'.");
+            }
             Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
             Consume(TokenType.LEFT_BRACKET, $"Se esperaba '[' después de ':' en '{attributeName}'.");
 
             List<string> values = new List<string>();
             do
             {
-                values.Add(Consume(TokenType.STRING, $"Se esperaba un valor de cadena en la lista de '{attributeName}'.").Lexeme);
+                Token stringToken = Consume(TokenType.STRING, $"Se esperaba un valor de cadena en la lista de '{attributeName}'.");
+                values.Add((string)stringToken.Literal); // Usar el valor literal en lugar del lexema
             } while (Match(TokenType.COMMA));
 
             Consume(TokenType.RIGHT_BRACKET, $"Se esperaba ']' al final de la lista de '{attributeName}'.");
@@ -334,7 +389,11 @@ namespace GwentInterpreters
 
         private Expression ParseExpressionAttribute(TokenType expectedTokenType, string attributeName)
         {
-            Consume(expectedTokenType, $"Se esperaba la clave '{attributeName}'.");
+            Token identifierToken = Consume(TokenType.IDENTIFIER, $"Se esperaba la clave '{attributeName}'.");
+            if (identifierToken.Lexeme != attributeName)
+            {
+                throw Error(identifierToken, $"Se esperaba la clave '{attributeName}', pero se encontró '{identifierToken.Lexeme}'.");
+            }
             Consume(TokenType.COLON, $"Se esperaba ':' después de '{attributeName}'.");
 
             // Parse the expression and ensure it's numeric
@@ -348,7 +407,6 @@ namespace GwentInterpreters
 
             return expr;
         }
-
         private bool IsNumericExpression(Expression expr)
         {
             // Recursively check if the expression is a valid numeric expression
@@ -483,6 +541,15 @@ namespace GwentInterpreters
                 }
                 else if (expr is Get getExpr)
                 {
+                    if (equals.Type == TokenType.PLUS_EQUAL)
+                    {
+                        value = new BinaryExpression(getExpr, new Token(TokenType.PLUS, "+", null, equals.Location), value);
+                    }
+                    else if (equals.Type == TokenType.MINUS_EQUAL)
+                    {
+                        value = new BinaryExpression(getExpr, new Token(TokenType.MINUS, "-", null, equals.Location), value);
+                    }
+
                     return new Set(getExpr.Object, getExpr.Name, value);
                 }
 
@@ -746,6 +813,8 @@ namespace GwentInterpreters
                     case TokenType.FOR:
                     case TokenType.IF:
                     case TokenType.WHILE:
+                    case TokenType.EFFECT_DECLARATION:
+                    case TokenType.CARD:
                         return;
 
                 }
