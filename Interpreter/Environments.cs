@@ -49,13 +49,6 @@ namespace GwentInterpreters
                 return;
             }
 
-            // Verificar si la variable existe en un entorno superior
-            if (enclosing != null)
-            {
-                enclosing.Assign(name, value);
-                return;
-            }
-
             // Si la variable no existe en ningún entorno, se define en el entorno actual
             Define(name.Lexeme, null);
             values[name.Lexeme] = value;

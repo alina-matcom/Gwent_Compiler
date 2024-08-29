@@ -7,30 +7,34 @@ using System.Reflection;
 namespace GwentInterpreters
 {
     public class Card
-{
-    public string Type { get; }
-    public string Name { get; }
-    public string Faction { get; }
-    public double Power { get; }
-    public List<string> Range { get; }
-    public List<EffectActionResult> OnActivation { get; }  // Cambiado de EffectAction a EffectActionResult
-
-    public Card(string type, string name, string faction, double power, List<string> range, List<EffectActionResult> onActivation)
     {
-        Type = type;
-        Name = name;
-        Faction = faction;
-        Power = power;
-        Range = range;
-        OnActivation = onActivation;
+        public string Type { get; set; }
+        public string Name { get; set; }
+        public string Faction { get; set; }
+        public double Power { get; set; }
+        public List<string> Range { get; set; }
+        public List<EffectActionResult> OnActivation { get; }  // Cambiado de EffectAction a EffectActionResult
+
+        public Card(string type, string name, string faction, double power, List<string> range, List<EffectActionResult> onActivation)
+        {
+            Type = type;
+            Name = name;
+            Faction = faction;
+            Power = power;
+            Range = range;
+            OnActivation = onActivation;
+        }
+        public override string ToString()
+        {
+            return $"Card: {Name}, Type: {Type}, Faction: {Faction}, Power: {Power}, Range: [{string.Join(", ", Range)}]";
+        }
     }
-}
 
 
     public class Context
     {
         private int triggerPlayer;
-        private List<Card> board;
+        private Iterable board;
         private Dictionary<int, Iterable> hands;
         private Dictionary<int, Iterable> fields;
         private Dictionary<int, Iterable> graveyards;
@@ -39,27 +43,68 @@ namespace GwentInterpreters
         public Context(int triggerPlayer)
         {
             this.triggerPlayer = triggerPlayer;
-            board = new List<Card>();
+            board = new Iterable();
             hands = new Dictionary<int, Iterable>();
             fields = new Dictionary<int, Iterable>();
             graveyards = new Dictionary<int, Iterable>();
             decks = new Dictionary<int, Iterable>();
+
+            // Inicializar las colecciones para el jugador que activa los efectos
+            InitializePlayerCollections(triggerPlayer);
         }
 
         public int TriggerPlayer => triggerPlayer;
-        public List<Card> Board => board;
+        public Iterable Board => board;
 
-        public Iterable HandOfPlayer(int player) => hands.ContainsKey(player) ? hands[player] : new Iterable();
-        public Iterable FieldOfPlayer(int player) => fields.ContainsKey(player) ? fields[player] : new Iterable();
-        public Iterable GraveyardOfPlayer(int player) => graveyards.ContainsKey(player) ? graveyards[player] : new Iterable();
-        public Iterable DeckOfPlayer(int player) => decks.ContainsKey(player) ? decks[player] : new Iterable();
+        public Iterable HandOfPlayer(int player)
+        {
+            if (!hands.ContainsKey(player))
+            {
+                InitializePlayerCollections(player);
+            }
+            return hands[player];
+        }
+
+        public Iterable FieldOfPlayer(int player)
+        {
+            if (!fields.ContainsKey(player))
+            {
+                InitializePlayerCollections(player);
+            }
+            return fields[player];
+        }
+
+        public Iterable GraveyardOfPlayer(int player)
+        {
+            if (!graveyards.ContainsKey(player))
+            {
+                InitializePlayerCollections(player);
+            }
+            return graveyards[player];
+        }
+
+        public Iterable DeckOfPlayer(int player)
+        {
+            if (!decks.ContainsKey(player))
+            {
+                InitializePlayerCollections(player);
+            }
+            return decks[player];
+        }
 
         public Iterable Hand => HandOfPlayer(triggerPlayer);
         public Iterable Field => FieldOfPlayer(triggerPlayer);
         public Iterable Graveyard => GraveyardOfPlayer(triggerPlayer);
         public Iterable Deck => DeckOfPlayer(triggerPlayer);
-    }
 
+        private void InitializePlayerCollections(int player)
+        {
+            hands[player] = new Iterable();
+            fields[player] = new Iterable();
+            graveyards[player] = new Iterable();
+            decks[player] = new Iterable();
+        }
+    }
     public class Iterable : IList<Card>
     {
         private List<Card> cards;
@@ -141,15 +186,52 @@ namespace GwentInterpreters
             {
                 var arg = arguments[i];
                 var paramType = parameters[i].ParameterType;
-                if (arg != null && !paramType.IsAssignableFrom(arg.GetType()))
+
+                if (arg != null)
                 {
-                    errorMessage = $"El argumento {i + 1} no puede ser convertido al tipo {paramType.Name}.";
-                    return false;
+                    if (arg.GetType() == typeof(double) && IsNumericType(paramType))
+                    {
+                        try
+                        {
+                            Convert.ChangeType(arg, paramType);
+                        }
+                        catch
+                        {
+                            errorMessage = $"El argumento {i + 1} no puede ser convertido al tipo {paramType.Name}.";
+                            return false;
+                        }
+                    }
+                    else if (!paramType.IsAssignableFrom(arg.GetType()))
+                    {
+                        errorMessage = $"El argumento {i + 1} no puede ser convertido al tipo {paramType.Name}.";
+                        return false;
+                    }
                 }
             }
 
             errorMessage = null;
             return true;
+        }
+
+        private bool IsNumericType(Type type)
+        {
+            switch (Type.GetTypeCode(type))
+            {
+                case TypeCode.Byte:
+                case TypeCode.Decimal:
+                case TypeCode.Double:
+                case TypeCode.Int16:
+                case TypeCode.Int32:
+                case TypeCode.Int64:
+                case TypeCode.SByte:
+                case TypeCode.Single:
+                case TypeCode.UInt16:
+                case TypeCode.UInt32:
+                case TypeCode.UInt64:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         public object Call(List<object> arguments)
@@ -166,6 +248,5 @@ namespace GwentInterpreters
             return _method.Invoke(_instance, convertedArgs);
         }
     }
-
 
 }
