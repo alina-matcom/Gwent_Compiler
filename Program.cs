@@ -9,7 +9,7 @@ namespace GwentInterpreters
         static void Main(string[] args)
         {
             // Leer el archivo de prueba
-            string dslCode = File.ReadAllText(@"C:\Users\admin\Desktop\Proyecto Gwent++\test.dsl");
+            string dslCode = File.ReadAllText(@"C:\Users\Alina\Desktop\Proyecto Gwent++\test.dsl");
 
             // Parsear el código DSL
             Parser parser = new Parser(new Scanner(dslCode).ScanTokens());
