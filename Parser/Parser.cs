@@ -52,7 +52,7 @@ namespace GwentInterpreters
             Console.WriteLine($"Nombre del efecto: {name}"); // Log
 
             // Inicialización de la lista de parámetros (opcional)
-            List<Parameter> parameters = null;
+            List<Parameter> parameters = new();
 
             // Verificamos si 'Params' está presente
             if (Match(TokenType.PARAMS))
